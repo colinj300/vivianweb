@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 :root {
-  --font-display: "Pacifico";
+  --font-display: "EB Garamond";
   --font-body: "Quicksand";
 }
 
@@ -14,9 +14,9 @@ html {
 body {
   @apply bg-blush text-plum font-body;
   background-image:
-    radial-gradient(circle at 15% 20%, rgba(255, 158, 216, 0.18), transparent 40%),
-    radial-gradient(circle at 85% 10%, rgba(200, 168, 240, 0.18), transparent 40%),
-    radial-gradient(circle at 50% 100%, rgba(255, 214, 236, 0.25), transparent 55%);
+    radial-gradient(circle at 15% 20%, rgba(205, 188, 236, 0.22), transparent 42%),
+    radial-gradient(circle at 85% 10%, rgba(216, 191, 230, 0.18), transparent 42%),
+    radial-gradient(circle at 50% 100%, rgba(232, 222, 248, 0.30), transparent 58%);
   background-attachment: fixed;
   min-height: 100vh;
 }
@@ -46,9 +46,9 @@ body {
 
 /* prettier scrollbar */
 ::-webkit-scrollbar { width: 12px; }
-::-webkit-scrollbar-track { background: #fff0f7; }
+::-webkit-scrollbar-track { background: #f6f2fb; }
 ::-webkit-scrollbar-thumb {
-  background: #ff9ed8;
+  background: #cdbcec;
   border-radius: 999px;
-  border: 3px solid #fff0f7;
+  border: 3px solid #f6f2fb;
 }

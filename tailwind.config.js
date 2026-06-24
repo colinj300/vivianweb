@@ -7,24 +7,24 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // Cute purple/pink palette
-        blush: "#fff0f7",
-        petal: "#ffd6ec",
-        bubblegum: "#ff9ed8",
-        rose: "#ff6fb5",
-        grape: "#b06ab3",
-        plum: "#8a4fa8",
-        lilac: "#e7d6ff",
-        lavender: "#c8a8f0",
-        cream: "#fffaf3",
+        // Soft pastel purple palette (gentle, low-saturation, less pink)
+        blush: "#f6f2fb", // page background — lavender white
+        petal: "#efdcef", // soft pastel pink, used sparingly
+        bubblegum: "#d8bfe6", // muted lilac (no longer neon)
+        rose: "#b488cf", // primary accent — soft orchid, purple-leaning
+        grape: "#8f72c2", // deeper accent purple
+        plum: "#5d4f7c", // muted purple for body text
+        lilac: "#e8def8",
+        lavender: "#cdbcec",
+        cream: "#fbf8ff",
       },
       fontFamily: {
-        display: ["var(--font-display)", "cursive"],
+        display: ["var(--font-display)", "serif"],
         body: ["var(--font-body)", "sans-serif"],
       },
       boxShadow: {
-        soft: "0 10px 30px -10px rgba(176, 106, 179, 0.35)",
-        glow: "0 0 25px rgba(255, 111, 181, 0.45)",
+        soft: "0 10px 30px -10px rgba(143, 114, 194, 0.30)",
+        glow: "0 0 25px rgba(180, 136, 207, 0.40)",
       },
       borderRadius: {
         blob: "40% 60% 55% 45% / 55% 45% 60% 40%",

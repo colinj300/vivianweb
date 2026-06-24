@@ -1,0 +1,54 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-display: "Pacifico";
+  --font-body: "Quicksand";
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply bg-blush text-plum font-body;
+  background-image:
+    radial-gradient(circle at 15% 20%, rgba(255, 158, 216, 0.18), transparent 40%),
+    radial-gradient(circle at 85% 10%, rgba(200, 168, 240, 0.18), transparent 40%),
+    radial-gradient(circle at 50% 100%, rgba(255, 214, 236, 0.25), transparent 55%);
+  background-attachment: fixed;
+  min-height: 100vh;
+}
+
+/* Cute reusable bits */
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-full
+      bg-gradient-to-r from-rose to-grape px-7 py-3 font-semibold
+      text-white shadow-soft transition-all duration-200
+      hover:scale-105 hover:shadow-glow active:scale-95;
+  }
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-full
+      border-2 border-bubblegum bg-white/70 px-7 py-3 font-semibold
+      text-grape backdrop-blur transition-all duration-200
+      hover:bg-petal hover:scale-105 active:scale-95;
+  }
+  .card {
+    @apply rounded-3xl bg-white/80 p-6 shadow-soft backdrop-blur
+      border border-white/60;
+  }
+  .section-title {
+    @apply font-display text-4xl md:text-5xl text-grape;
+  }
+}
+
+/* prettier scrollbar */
+::-webkit-scrollbar { width: 12px; }
+::-webkit-scrollbar-track { background: #fff0f7; }
+::-webkit-scrollbar-thumb {
+  background: #ff9ed8;
+  border-radius: 999px;
+  border: 3px solid #fff0f7;
+}

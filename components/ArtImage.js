@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Palette } from "lucide-react";
 
 // Shows a piece of artwork at its true canvas proportions (via w/h) with a
@@ -18,7 +18,17 @@ const gradients = [
 
 export default function ArtImage({ src, title, size, note, w = 1, h = 1, index = 0 }) {
   const [loaded, setLoaded] = useState(false);
+  const imgRef = useRef(null);
   const grad = gradients[index % gradients.length];
+
+  // If the image was already cached, its `load` event can fire before React
+  // attaches the onLoad handler, so check `complete` right after mount.
+  useEffect(() => {
+    const img = imgRef.current;
+    if (img && img.complete && img.naturalWidth > 0) {
+      setLoaded(true);
+    }
+  }, [src]);
 
   return (
     <figure className="flex flex-col items-center">
@@ -26,7 +36,7 @@ export default function ArtImage({ src, title, size, note, w = 1, h = 1, index =
         className="relative w-full overflow-hidden rounded-2xl border border-white/60 shadow-soft"
         style={{ aspectRatio: `${w} / ${h}` }}
       >
-        {/* placeholder (always rendered behind; hidden once image loads) */}
+        {/* placeholder (behind the image; hidden once the image loads) */}
         {!loaded && (
           <div className={`absolute inset-0 flex items-center justify-center bg-gradient-to-br ${grad}`}>
             <Palette className="h-12 w-12 text-white/90" strokeWidth={1.5} />
@@ -35,11 +45,12 @@ export default function ArtImage({ src, title, size, note, w = 1, h = 1, index =
         {src && (
           // eslint-disable-next-line @next/next/no-img-element
           <img
+            ref={imgRef}
             src={src}
             alt={title}
             onLoad={() => setLoaded(true)}
             onError={() => setLoaded(false)}
-            className={`h-full w-full object-cover transition-all duration-500 hover:scale-105 ${
+            className={`h-full w-full object-cover transition-opacity duration-500 hover:scale-105 ${
               loaded ? "opacity-100" : "opacity-0"
             }`}
           />

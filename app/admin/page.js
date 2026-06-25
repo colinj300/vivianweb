@@ -15,87 +15,77 @@ const STATUS_COLOR = {
 export default function AdminPage() {
   const [pw, setPw] = useState("");
   const [authed, setAuthed] = useState(false);
+  const [checking, setChecking] = useState(true);
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
-  const load = useCallback(
-    async (password) => {
-      setError("");
-      const res = await fetch("/api/admin/commissions", {
-        headers: { "x-admin-password": password },
-        cache: "no-store",
-      });
-      if (res.status === 401) {
-        setError("Wrong password (or ADMIN_PASSWORD isn't set yet).");
-        setAuthed(false);
-        return false;
-      }
-      const d = await res.json();
-      setData(d);
-      setAuthed(true);
-      return true;
-    },
-    []
-  );
-
-  useEffect(() => {
-    const saved = typeof window !== "undefined" ? localStorage.getItem("vw_admin_pw") : "";
-    if (saved) {
-      setPw(saved);
-      load(saved);
+  // The session cookie is sent automatically — no password handling here.
+  const load = useCallback(async () => {
+    const res = await fetch("/api/admin/commissions", { cache: "no-store" });
+    if (res.status === 401) {
+      setAuthed(false);
+      return false;
     }
+    setData(await res.json());
+    setAuthed(true);
+    return true;
+  }, []);
+
+  // On open, check whether we already have a valid session.
+  useEffect(() => {
+    load().finally(() => setChecking(false));
   }, [load]);
 
   async function login(e) {
     e.preventDefault();
-    const ok = await load(pw);
-    if (ok) localStorage.setItem("vw_admin_pw", pw);
+    setError("");
+    const res = await fetch("/api/admin/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: pw }),
+    });
+    if (res.ok) {
+      setPw("");
+      await load();
+    } else {
+      const d = await res.json().catch(() => ({}));
+      setError(d.error || "Could not log in.");
+    }
   }
 
-  async function updateStatus(id, status) {
+  async function logout() {
+    await fetch("/api/admin/login", { method: "DELETE" });
+    setAuthed(false);
+    setData(null);
+  }
+
+  async function post(body) {
     setBusy(true);
-    await fetch("/api/admin/commissions", {
+    const res = await fetch("/api/admin/commissions", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "x-admin-password": pw },
-      body: JSON.stringify({ id, status }),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
     });
-    await load(pw);
+    if (res.status === 401) setAuthed(false);
+    await load();
     setBusy(false);
   }
 
-  async function updateStage(id, stage) {
-    setBusy(true);
-    await fetch("/api/admin/commissions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-admin-password": pw },
-      body: JSON.stringify({ id, stage }),
-    });
-    await load(pw);
-    setBusy(false);
-  }
-
-  async function setPrice(id, finalPrice) {
-    setBusy(true);
-    await fetch("/api/admin/commissions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-admin-password": pw },
-      body: JSON.stringify({ id, finalPrice }),
-    });
-    await load(pw);
-    setBusy(false);
-  }
+  const updateStatus = (id, status) => post({ id, status });
+  const updateStage = (id, stage) => post({ id, stage });
+  const setPrice = (id, finalPrice) => post({ id, finalPrice });
 
   async function makeLink(id, amount, emailCustomer) {
     setBusy(true);
     const res = await fetch("/api/admin/payment-link", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "x-admin-password": pw },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id, amount, emailCustomer }),
     });
-    const d = await res.json();
+    const d = await res.json().catch(() => ({}));
     if (!res.ok) alert(d.error || "Could not create link");
-    await load(pw);
+    await load();
     setBusy(false);
   }
 
@@ -109,10 +99,13 @@ export default function AdminPage() {
             value={pw}
             onChange={(e) => setPw(e.target.value)}
             placeholder="Admin password"
+            autoComplete="current-password"
             className="w-full rounded-2xl border-2 border-petal/60 bg-white/70 p-3 text-plum focus:border-rose focus:outline-none"
           />
           {error && <p className="text-sm font-semibold text-rose">{error}</p>}
-          <button className="btn-primary w-full">Log in</button>
+          <button className="btn-primary w-full" disabled={checking}>
+            {checking ? "…" : "Log in"}
+          </button>
         </form>
       </div>
     );
@@ -122,9 +115,14 @@ export default function AdminPage() {
     <div className="mx-auto max-w-5xl px-5 py-12">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="section-title">Commissions</h1>
-        <button onClick={() => load(pw)} className="btn-secondary !py-2 text-sm">
-          <RefreshCw className="h-4 w-4" /> Refresh
-        </button>
+        <div className="flex gap-2">
+          <button onClick={() => load()} className="btn-secondary !py-2 text-sm">
+            <RefreshCw className="h-4 w-4" /> Refresh
+          </button>
+          <button onClick={logout} className="btn-secondary !py-2 text-sm">
+            Log out
+          </button>
+        </div>
       </div>
 
       {/* slot summary */}

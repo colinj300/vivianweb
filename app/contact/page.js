@@ -47,7 +47,7 @@ export default function ContactPage() {
         and I&apos;ll get back to you soon!
       </p>
 
-      {site.chat?.tawkSrc && (
+      {(process.env.NEXT_PUBLIC_TAWK_SRC || site.chat?.tawkSrc) && (
         <div className="mt-6 flex flex-col items-center gap-2 rounded-2xl bg-lilac/50 p-4 text-center">
           <p className="text-sm font-semibold text-grape">
             Want a faster reply? Chat with me live!

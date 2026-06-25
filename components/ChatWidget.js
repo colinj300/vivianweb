@@ -8,7 +8,8 @@ import { site } from "@/lib/config";
 // site works fine before chat is connected.
 export default function ChatWidget() {
   useEffect(() => {
-    const src = site.chat?.tawkSrc;
+    // Prefer the env var (set in Vercel) and fall back to lib/config.js.
+    const src = process.env.NEXT_PUBLIC_TAWK_SRC || site.chat?.tawkSrc;
     if (!src) return;
     if (document.getElementById("tawk-script")) return;
 

@@ -3,43 +3,55 @@
 import { useState } from "react";
 import { Palette } from "lucide-react";
 
-// Shows the artwork if the image file exists in /public/art.
-// If it's missing (e.g. before real art is uploaded), it falls back to a
-// cute gradient placeholder so the layout always looks finished.
+// Shows a piece of artwork at its true canvas proportions (via w/h) with a
+// little striped name plaque underneath. A cute gradient placeholder fills
+// the same shape until the real image loads (and stays if the file is
+// missing), so the layout always looks finished.
 const gradients = [
-  "from-petal to-lavender",
-  "from-bubblegum to-lilac",
+  "from-bubblegum to-lavender",
   "from-rose to-grape",
-  "from-lilac to-petal",
   "from-lavender to-bubblegum",
-  "from-petal to-rose",
+  "from-grape to-rose",
+  "from-bubblegum to-rose",
+  "from-rose to-lavender",
 ];
 
-export default function ArtImage({ src, title, note, index = 0 }) {
-  const [errored, setErrored] = useState(false);
+export default function ArtImage({ src, title, size, note, w = 1, h = 1, index = 0 }) {
+  const [loaded, setLoaded] = useState(false);
   const grad = gradients[index % gradients.length];
 
   return (
-    <figure className="group relative overflow-hidden rounded-3xl shadow-soft border border-white/60">
-      {!errored && src ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={src}
-          alt={title}
-          onError={() => setErrored(true)}
-          className="h-64 w-full object-cover transition-transform duration-500 group-hover:scale-110"
-        />
-      ) : (
-        <div
-          className={`flex h-64 w-full items-center justify-center bg-gradient-to-br ${grad}`}
-        >
-          <Palette className="h-12 w-12 animate-float text-white/85" strokeWidth={1.5} />
-        </div>
-      )}
+    <figure className="flex flex-col items-center">
+      <div
+        className="relative w-full overflow-hidden rounded-2xl border border-white/60 shadow-soft"
+        style={{ aspectRatio: `${w} / ${h}` }}
+      >
+        {/* placeholder (always rendered behind; hidden once image loads) */}
+        {!loaded && (
+          <div className={`absolute inset-0 flex items-center justify-center bg-gradient-to-br ${grad}`}>
+            <Palette className="h-12 w-12 text-white/90" strokeWidth={1.5} />
+          </div>
+        )}
+        {src && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={src}
+            alt={title}
+            onLoad={() => setLoaded(true)}
+            onError={() => setLoaded(false)}
+            className={`h-full w-full object-cover transition-all duration-500 hover:scale-105 ${
+              loaded ? "opacity-100" : "opacity-0"
+            }`}
+          />
+        )}
+      </div>
 
-      <figcaption className="absolute inset-x-0 bottom-0 translate-y-2 bg-gradient-to-t from-plum/70 to-transparent p-4 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
-        <p className="font-display text-lg text-white">{title}</p>
-        {note && <p className="text-sm text-white/85">{note}</p>}
+      {/* striped name plaque */}
+      <figcaption className="plaque z-10 -mt-4 max-w-[88%]">
+        <span className="block font-plaque text-xl leading-tight text-plum">{title}</span>
+        {(size || note) && (
+          <span className="block font-plaque text-sm text-grape">{size || note}</span>
+        )}
       </figcaption>
     </figure>
   );

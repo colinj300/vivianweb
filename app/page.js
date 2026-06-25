@@ -82,8 +82,8 @@ export default function Home() {
       {/* GALLERY PREVIEW */}
       <section className="mx-auto max-w-6xl px-5 py-12">
         <h2 className="section-title text-center">Recent work</h2>
-        <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {gallery.slice(0, 6).map((art, i) => (
+        <div className="mt-10 grid items-start gap-x-5 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
+          {gallery.slice(0, 3).map((art, i) => (
             <ArtImage key={i} {...art} index={i} />
           ))}
         </div>

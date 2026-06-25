@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Mail, Heart } from "lucide-react";
+import { Mail, Heart, MessageCircle } from "lucide-react";
 import { site } from "@/lib/config";
 
 export default function ContactPage() {
@@ -46,6 +46,20 @@ export default function ContactPage() {
         Have a question or a special request before you order? Send a message
         and I&apos;ll get back to you soon!
       </p>
+
+      {site.chat?.tawkSrc && (
+        <div className="mt-6 flex flex-col items-center gap-2 rounded-2xl bg-lilac/50 p-4 text-center">
+          <p className="text-sm font-semibold text-grape">
+            Want a faster reply? Chat with me live!
+          </p>
+          <button
+            onClick={() => window.Tawk_API?.maximize?.()}
+            className="btn-primary !py-2 text-sm"
+          >
+            <MessageCircle className="h-4 w-4" /> Open live chat
+          </button>
+        </div>
+      )}
 
       <div className="card mt-10">
         {status === "sent" ? (

@@ -1,12 +1,30 @@
 import "./globals.css";
-import { Quicksand, EB_Garamond } from "next/font/google";
+import { Quicksand, EB_Garamond, Caveat } from "next/font/google";
 import { site } from "@/lib/config";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import ChatWidget from "@/components/ChatWidget";
 
 const quicksand = Quicksand({
   subsets: ["latin"],
   variable: "--font-body",
+  display: "swap",
+});
+
+// GALLERY NAME-PLAQUE FONT
+// "Kith" is a handmade script font, but its free version is personal-use
+// only (this site is commercial), so we use Caveat — a free-for-commercial
+// handmade script — as a close stand-in.
+//
+// To use the REAL Kith font: drop the file in /public/fonts (e.g.
+// /public/fonts/Kith.woff2), then swap this for:
+//   import localFont from "next/font/local";
+//   const plaque = localFont({ src: "../public/fonts/Kith.woff2",
+//     variable: "--font-plaque", display: "swap" });
+const plaque = Caveat({
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
+  variable: "--font-plaque",
   display: "swap",
 });
 
@@ -40,11 +58,15 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" className={`${quicksand.variable} ${display.variable}`}>
+    <html
+      lang="en"
+      className={`${quicksand.variable} ${display.variable} ${plaque.variable}`}
+    >
       <body>
         <Navbar />
         <main className="min-h-screen">{children}</main>
         <Footer />
+        <ChatWidget />
       </body>
     </html>
   );

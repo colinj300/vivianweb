@@ -19,8 +19,8 @@ export default function Home() {
               commissions are open
               <Heart className="h-3.5 w-3.5" strokeWidth={2} />
             </span>
-            <h1 className="mt-5 leading-tight">
-              <Wordmark className="flex-wrap text-6xl md:text-7xl" />
+            <h1 className="mt-5">
+              <Wordmark stacked className="text-6xl md:text-7xl" />
             </h1>
             <p className="mt-5 max-w-md text-lg text-plum/80">{site.tagline}</p>
             <p className="mt-2 max-w-md text-plum/70">

@@ -14,11 +14,11 @@ export default function Wordmark({ className = "", stacked = false }) {
         <span className="font-coldia text-grape text-[1.45em] leading-none">Visuals</span>
         <span
           style={times}
-          className="my-1 ml-[3.2em] text-[0.5em] italic text-plum/60"
+          className="-mt-[0.45em] ml-[3.2em] text-[0.5em] italic text-plum/60"
         >
           by
         </span>
-        <span className="font-display text-rose text-[1.05em] leading-none">Vivian</span>
+        <span className="font-display text-rose text-[1.05em] leading-none -mt-[0.3em]">Vivian</span>
       </span>
     );
   }

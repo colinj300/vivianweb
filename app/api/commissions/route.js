@@ -17,9 +17,15 @@ export async function POST(req) {
       sizeId,
       customSize,
       additionalSubjects,
-      complexBackground,
+      backgroundId,
+      images,
       request,
     } = body;
+
+    // images is an array of already-uploaded photo URLs (from /api/upload).
+    const photos = Array.isArray(images)
+      ? images.filter((u) => typeof u === "string" && u.startsWith("http")).slice(0, 8)
+      : [];
 
     if (!name?.trim() || !email?.trim()) {
       return NextResponse.json(
@@ -39,7 +45,7 @@ export async function POST(req) {
       sizeId,
       customSize,
       additionalSubjects,
-      complexBackground,
+      backgroundId,
     });
     if (!estimate) {
       return NextResponse.json({ error: "Please pick a size." }, { status: 400 });
@@ -67,13 +73,15 @@ export async function POST(req) {
       customSize: estimate.isCustom ? (customSize || "").trim().slice(0, 200) : "",
       sizeName: estimate.sizeLabel,
       additionalSubjects: estimate.subjects,
-      complexBackground: estimate.complexBackground,
+      backgroundId: estimate.background.id,
+      backgroundName: estimate.background.name,
+      images: photos,
       request: request.trim().slice(0, 4000),
       estimate: estimate.total,
       estimateNote: estimate.isCustom ? "base price quoted at review" : "",
       finalPrice: null,
       paymentLink: null,
-      status, // pending | in_progress | completed | waitlist | declined
+      status, // pending | approved | completed | waitlist | declined
     };
 
     await saveCommission(record);
@@ -83,14 +91,15 @@ export async function POST(req) {
       : ` (WAITLIST — currently full, #${await countWaitlist()} in line)`;
 
     const subjectsNote = estimate.subjects > 0 ? `, +${estimate.subjects} subject(s)` : "";
-    const bgNote = estimate.complexBackground ? ", complex bg" : "";
+    const bgNote = `, ${estimate.background.name.toLowerCase()}`;
+    const photoNote = photos.length ? `, ${photos.length} photo(s)` : "";
     const priceNote = estimate.isCustom
       ? `est extras $${estimate.total} + base quoted`
       : `est $${estimate.total}`;
 
     await sendSMS(
       `New commission request${waitNote}\n${record.name} (${record.email})\n` +
-        `${estimate.medium.name} · ${estimate.sizeLabel}${subjectsNote}${bgNote} — ${priceNote}\n` +
+        `${estimate.medium.name} · ${estimate.sizeLabel}${subjectsNote}${bgNote}${photoNote} — ${priceNote}\n` +
         `"${record.request.slice(0, 600)}"`
     );
 
@@ -102,9 +111,11 @@ export async function POST(req) {
         `Name: ${record.name}\nEmail: ${record.email}\n` +
         `Medium: ${estimate.medium.name}\nSize: ${estimate.sizeLabel}\n` +
         `Extra subjects: ${estimate.subjects}\n` +
-        `Complex background: ${estimate.complexBackground ? "yes" : "no"}\n` +
+        `Background: ${estimate.background.name}\n` +
         `Estimate: $${estimate.total}${estimate.isCustom ? " (extras only — base quoted at review)" : ""}\n` +
-        `Status: ${status}\n\nRequest:\n${record.request}`,
+        `Status: ${status}\n` +
+        (photos.length ? `\nPet photos:\n${photos.join("\n")}\n` : "") +
+        `\nRequest:\n${record.request}`,
     });
 
     return NextResponse.json({

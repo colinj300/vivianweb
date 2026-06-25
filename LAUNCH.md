@@ -51,6 +51,14 @@ handle card details, and no webhook is required to launch.
 
 ---
 
+## Step 4b — Pet photo uploads (optional, ≈2 min)
+So buyers can attach photos of their pet to a request.
+1. In your Vercel project → **Storage** tab → **Create** → **Blob** store →
+   connect it to the project.
+2. Vercel adds `BLOB_READ_WRITE_TOKEN` automatically. Photos then upload on the
+   request form and show as thumbnails in `/admin`.
+Without it, the form still works — people just can't attach photos.
+
 ## Step 5 — Live chat (optional, ≈10 min)
 So you can message buyers in real time from your phone instead of email.
 1. Sign up free at **[tawk.to](https://tawk.to)** and create a property for the

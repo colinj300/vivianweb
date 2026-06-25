@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Minus, Plus, Check, Heart, Mail, ClipboardList } from "lucide-react";
-import { mediums, pricing } from "@/lib/config";
+import { Minus, Plus, Heart, Mail, ClipboardList, ImagePlus, X } from "lucide-react";
+import { mediums, pricing, backgrounds } from "@/lib/config";
 import { computeEstimate } from "@/lib/pricing";
 
 export default function CommissionsPage() {
@@ -11,13 +11,17 @@ export default function CommissionsPage() {
   const [sizeId, setSizeId] = useState(null);
   const [customSize, setCustomSize] = useState("");
   const [extraSubjects, setExtraSubjects] = useState(0);
-  const [complexBg, setComplexBg] = useState(false);
+  const [backgroundId, setBackgroundId] = useState("none");
+  const [photos, setPhotos] = useState([]); // [{ url, name }]
+  const [uploading, setUploading] = useState(false);
+  const [uploadNote, setUploadNote] = useState("");
   const [request, setRequest] = useState("");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [done, setDone] = useState(null); // { waitlisted, estimate }
+  const fileRef = useRef(null);
 
   const medium = mediums.find((m) => m.id === mediumId);
   const isCustom = sizeId === "custom";
@@ -29,6 +33,39 @@ export default function CommissionsPage() {
     setCustomSize("");
   }
 
+  async function onFiles(e) {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    setUploadNote("");
+    setUploading(true);
+    for (const file of files) {
+      if (photos.length >= 8) break;
+      const fd = new FormData();
+      fd.append("file", file);
+      try {
+        const res = await fetch("/api/upload", { method: "POST", body: fd });
+        const d = await res.json();
+        if (res.ok && d.url) {
+          setPhotos((p) => [...p, { url: d.url, name: file.name }]);
+        } else if (res.status === 503) {
+          setUploadNote(
+            "Photo uploads aren't switched on yet — you can still send your request and email photos after."
+          );
+        } else {
+          setUploadNote(d.error || "Couldn't upload that image.");
+        }
+      } catch {
+        setUploadNote("Couldn't upload that image. Please try again.");
+      }
+    }
+    setUploading(false);
+    if (fileRef.current) fileRef.current.value = "";
+  }
+
+  function removePhoto(url) {
+    setPhotos((p) => p.filter((x) => x.url !== url));
+  }
+
   const estimate = useMemo(() => {
     if (!sizeId) return null;
     return computeEstimate({
@@ -36,9 +73,9 @@ export default function CommissionsPage() {
       sizeId,
       customSize,
       additionalSubjects: extraSubjects,
-      complexBackground: complexBg,
+      backgroundId,
     });
-  }, [mediumId, sizeId, customSize, extraSubjects, complexBg]);
+  }, [mediumId, sizeId, customSize, extraSubjects, backgroundId]);
 
   async function submit() {
     setError("");
@@ -59,7 +96,8 @@ export default function CommissionsPage() {
           sizeId,
           customSize,
           additionalSubjects: extraSubjects,
-          complexBackground: complexBg,
+          backgroundId,
+          images: photos.map((p) => p.url),
           request,
         }),
       });
@@ -246,38 +284,82 @@ export default function CommissionsPage() {
           {/* BACKGROUND */}
           <div className="card">
             <h2 className="font-display text-2xl text-grape">3. Background</h2>
-            <button
-              onClick={() => setComplexBg((v) => !v)}
-              className={`mt-4 flex w-full items-center justify-between rounded-2xl border-2 p-4 text-left transition-all ${
-                complexBg
-                  ? "border-rose bg-petal/60 shadow-soft"
-                  : "border-petal/50 bg-white/60 hover:border-bubblegum"
-              }`}
-            >
-              <span className="flex items-center gap-3">
-                <span
-                  className={`flex h-6 w-6 items-center justify-center rounded-md border-2 text-white ${
-                    complexBg ? "border-rose bg-rose" : "border-bubblegum"
+            <p className="mt-1 text-sm text-plum/60">
+              Simple backgrounds are free. A complex scene is +${pricing.complexBackground}.
+            </p>
+            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {backgrounds.map((b) => (
+                <button
+                  key={b.id}
+                  onClick={() => setBackgroundId(b.id)}
+                  className={`flex flex-col items-center rounded-2xl border-2 p-3 text-center transition-all ${
+                    backgroundId === b.id
+                      ? "border-rose bg-petal/60 shadow-soft"
+                      : "border-petal/50 bg-white/60 hover:border-bubblegum"
                   }`}
                 >
-                  {complexBg && <Check className="h-4 w-4" strokeWidth={3} />}
-                </span>
-                <span>
-                  <span className="block font-semibold text-grape">
-                    Complex background / scenery
+                  <span className="font-semibold text-grape">{b.name}</span>
+                  <span className="mt-1 text-xs font-semibold text-rose">
+                    {b.price > 0 ? `+$${b.price}` : "free"}
                   </span>
-                  <span className="block text-xs text-plum/60">
-                    Landscapes or detailed settings
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* PET PHOTOS */}
+          <div className="card">
+            <h2 className="font-display text-2xl text-grape">4. Add pet photos</h2>
+            <p className="mt-1 text-sm text-plum/60">
+              Upload clear photos of your pet (or any reference images) so I can
+              capture them just right. Optional — up to 8.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-3">
+              {photos.map((p) => (
+                <div
+                  key={p.url}
+                  className="relative h-24 w-24 overflow-hidden rounded-2xl border-2 border-petal"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={p.url} alt={p.name} className="h-full w-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => removePhoto(p.url)}
+                    className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-white/90 text-grape shadow"
+                    aria-label="Remove photo"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ))}
+              {photos.length < 8 && (
+                <button
+                  type="button"
+                  onClick={() => fileRef.current?.click()}
+                  disabled={uploading}
+                  className="flex h-24 w-24 flex-col items-center justify-center gap-1 rounded-2xl border-2 border-dashed border-bubblegum text-grape transition hover:bg-petal disabled:opacity-60"
+                >
+                  <ImagePlus className="h-6 w-6" />
+                  <span className="text-xs font-semibold">
+                    {uploading ? "Uploading…" : "Add photo"}
                   </span>
-                </span>
-              </span>
-              <span className="font-semibold text-rose">+${pricing.complexBackground}</span>
-            </button>
+                </button>
+              )}
+            </div>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={onFiles}
+              className="hidden"
+            />
+            {uploadNote && <p className="mt-2 text-xs font-semibold text-rose">{uploadNote}</p>}
           </div>
 
           {/* REQUEST */}
           <div className="card">
-            <h2 className="font-display text-2xl text-grape">4. Describe your commission</h2>
+            <h2 className="font-display text-2xl text-grape">5. Describe your commission</h2>
             <textarea
               value={request}
               onChange={(e) => setRequest(e.target.value)}

@@ -196,13 +196,28 @@ function CommissionCard({ c, busy, onStatus, onStage, onPrice, onLink }) {
       <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-sm text-plum/80">
         <span className="flex items-center gap-1"><Ruler className="h-4 w-4" /> {c.mediumName ? `${c.mediumName} · ` : ""}{c.sizeName}</span>
         <span className="flex items-center gap-1"><User className="h-4 w-4" /> {1 + (c.additionalSubjects || 0)} subject(s)</span>
-        <span className="flex items-center gap-1"><Mountain className="h-4 w-4" /> {c.complexBackground ? "complex bg" : "no bg"}</span>
+        <span className="flex items-center gap-1"><Mountain className="h-4 w-4" /> {c.backgroundName || (c.complexBackground ? "complex bg" : "no bg")}</span>
         <span className="flex items-center gap-1"><DollarSign className="h-4 w-4" /> {c.isCustom ? `extras $${c.estimate} + base TBD` : `est $${c.estimate}`}{c.finalPrice ? ` · final $${c.finalPrice}` : ""}</span>
       </div>
 
       <p className="mt-3 whitespace-pre-line rounded-2xl bg-blush/70 p-3 text-sm text-plum/80">
         {c.request}
       </p>
+
+      {Array.isArray(c.images) && c.images.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {c.images.map((url) => (
+            <a key={url} href={url} target="_blank" rel="noreferrer">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={url}
+                alt="pet reference"
+                className="h-20 w-20 rounded-xl border border-petal object-cover hover:opacity-80"
+              />
+            </a>
+          ))}
+        </div>
+      )}
 
       {/* review from customer */}
       {c.review && (

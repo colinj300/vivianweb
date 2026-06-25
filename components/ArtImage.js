@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Palette } from "lucide-react";
+import { Palette, Flower2 } from "lucide-react";
 
-// Shows a piece of artwork at its true canvas proportions (via w/h) with a
-// little striped name plaque underneath. A cute gradient placeholder fills
-// the same shape until the real image loads (and stays if the file is
-// missing), so the layout always looks finished.
+// Shows a piece of artwork at its true canvas proportions (via w/h) inside a
+// cute matted floral frame, with a little striped name plaque underneath. A
+// gradient placeholder fills the same shape until the real image loads (and
+// stays if the file is missing), so the layout always looks finished.
 const gradients = [
   "from-bubblegum to-lavender",
   "from-rose to-grape",
@@ -14,6 +14,14 @@ const gradients = [
   "from-grape to-rose",
   "from-bubblegum to-rose",
   "from-rose to-lavender",
+];
+
+// Corner flowers (color + rotation) for the floral frame.
+const corners = [
+  { pos: "-left-2 -top-2", color: "text-rose", rot: "-rotate-12" },
+  { pos: "-right-2 -top-2", color: "text-grape", rot: "rotate-12" },
+  { pos: "-left-2 -bottom-2", color: "text-lavender", rot: "rotate-45" },
+  { pos: "-right-2 -bottom-2", color: "text-bubblegum", rot: "-rotate-45" },
 ];
 
 export default function ArtImage({ src, title, size, note, w = 1, h = 1, index = 0 }) {
@@ -25,36 +33,47 @@ export default function ArtImage({ src, title, size, note, w = 1, h = 1, index =
   // attaches the onLoad handler, so check `complete` right after mount.
   useEffect(() => {
     const img = imgRef.current;
-    if (img && img.complete && img.naturalWidth > 0) {
-      setLoaded(true);
-    }
+    if (img && img.complete && img.naturalWidth > 0) setLoaded(true);
   }, [src]);
 
   return (
     <figure className="flex flex-col items-center">
-      <div
-        className="relative w-full overflow-hidden rounded-2xl border border-white/60 shadow-soft"
-        style={{ aspectRatio: `${w} / ${h}` }}
-      >
-        {/* placeholder (behind the image; hidden once the image loads) */}
-        {!loaded && (
-          <div className={`absolute inset-0 flex items-center justify-center bg-gradient-to-br ${grad}`}>
-            <Palette className="h-12 w-12 text-white/90" strokeWidth={1.5} />
+      <div className="relative w-full">
+        {/* matted floral frame */}
+        <div className="rounded-2xl border-2 border-petal bg-white p-[3%] shadow-soft">
+          <div
+            className="relative overflow-hidden rounded-xl border border-lavender/70"
+            style={{ aspectRatio: `${w} / ${h}` }}
+          >
+            {!loaded && (
+              <div className={`absolute inset-0 flex items-center justify-center bg-gradient-to-br ${grad}`}>
+                <Palette className="h-10 w-10 text-white/90" strokeWidth={1.5} />
+              </div>
+            )}
+            {src && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                ref={imgRef}
+                src={src}
+                alt={title}
+                onLoad={() => setLoaded(true)}
+                onError={() => setLoaded(false)}
+                className={`h-full w-full object-cover transition-opacity duration-500 ${
+                  loaded ? "opacity-100" : "opacity-0"
+                }`}
+              />
+            )}
           </div>
-        )}
-        {src && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            ref={imgRef}
-            src={src}
-            alt={title}
-            onLoad={() => setLoaded(true)}
-            onError={() => setLoaded(false)}
-            className={`h-full w-full object-cover transition-opacity duration-500 hover:scale-105 ${
-              loaded ? "opacity-100" : "opacity-0"
-            }`}
+        </div>
+
+        {/* corner flowers */}
+        {corners.map((c) => (
+          <Flower2
+            key={c.pos}
+            className={`absolute ${c.pos} ${c.color} ${c.rot} h-5 w-5 drop-shadow-[0_1px_1px_rgba(255,255,255,0.9)]`}
+            strokeWidth={1.75}
           />
-        )}
+        ))}
       </div>
 
       {/* striped name plaque */}

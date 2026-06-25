@@ -14,13 +14,13 @@ export async function POST(req) {
 
     if (!name?.trim() || !email?.trim()) {
       return NextResponse.json(
-        { error: "Please add your name and email so we can reach you. ♡" },
+        { error: "Please add your name and email so we can reach you." },
         { status: 400 }
       );
     }
     if (!request?.trim()) {
       return NextResponse.json(
-        { error: "Please describe what you'd like in the request box. ♡" },
+        { error: "Please describe what you'd like in the request box." },
         { status: 400 }
       );
     }
@@ -60,7 +60,7 @@ export async function POST(req) {
     const bgNote = estimate.complexBackground ? ", complex bg" : "";
 
     await sendSMS(
-      `🎨 New commission request${waitNote}\n${record.name} (${record.email})\n` +
+      `New commission request${waitNote}\n${record.name} (${record.email})\n` +
         `${estimate.size.name}${subjectsNote}${bgNote} — est $${estimate.total}\n` +
         `"${record.request.slice(0, 600)}"`
     );
@@ -68,7 +68,7 @@ export async function POST(req) {
     await sendEmail({
       to: site.contactEmail,
       replyTo: record.email,
-      subject: `🎨 Commission request from ${record.name}${open ? "" : " (WAITLIST)"}`,
+      subject: `Commission request from ${record.name}${open ? "" : " (WAITLIST)"}`,
       text:
         `Name: ${record.name}\nEmail: ${record.email}\n` +
         `Size: ${estimate.size.name}\nExtra subjects: ${estimate.subjects}\n` +

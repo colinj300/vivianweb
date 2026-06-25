@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Flower2, Heart } from "lucide-react";
 import { site } from "@/lib/config";
 
 export default function Footer() {
@@ -6,7 +7,10 @@ export default function Footer() {
   return (
     <footer className="mt-20 border-t border-petal/60 bg-white/60 backdrop-blur">
       <div className="mx-auto max-w-6xl px-5 py-10 text-center">
-        <p className="font-display text-2xl text-rose">{site.artistName} ✿</p>
+        <p className="flex items-center justify-center gap-1.5 font-display text-2xl text-rose">
+          {site.artistName}
+          <Flower2 className="h-5 w-5" strokeWidth={1.75} />
+        </p>
         <p className="mt-2 text-plum/70">{site.tagline}</p>
 
         <div className="mt-5 flex justify-center gap-5 text-sm font-semibold text-grape">
@@ -32,7 +36,8 @@ export default function Footer() {
         </div>
 
         <p className="mt-6 text-xs text-plum/50">
-          © {new Date().getFullYear()} {site.artistName}. Made with 💜
+          © {new Date().getFullYear()} {site.artistName}. Made with{" "}
+          <Heart className="inline-block h-3.5 w-3.5 align-[-2px]" strokeWidth={2} />
         </p>
       </div>
     </footer>

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { Minus, Plus, Check, Heart, Mail, ClipboardList } from "lucide-react";
 import { canvasSizes, pricing } from "@/lib/config";
 import { computeEstimate } from "@/lib/pricing";
 
@@ -27,9 +28,9 @@ export default function CommissionsPage() {
 
   async function submit() {
     setError("");
-    if (!sizeId) return setError("Please pick a canvas size. ♡");
-    if (!request.trim()) return setError("Tell me about your commission in the request box. ♡");
-    if (!name.trim() || !email.trim()) return setError("Please add your name and email. ♡");
+    if (!sizeId) return setError("Please pick a canvas size.");
+    if (!request.trim()) return setError("Tell me about your commission in the request box.");
+    if (!name.trim() || !email.trim()) return setError("Please add your name and email.");
 
     setLoading(true);
     try {
@@ -62,14 +63,18 @@ export default function CommissionsPage() {
   if (done) {
     return (
       <div className="mx-auto flex max-w-xl flex-col items-center px-5 py-24 text-center">
-        <div className="text-6xl animate-wiggle">{done.waitlisted ? "📝" : "💌"}</div>
+        {done.waitlisted ? (
+          <ClipboardList className="h-16 w-16 animate-wiggle text-rose" strokeWidth={1.25} />
+        ) : (
+          <Mail className="h-16 w-16 animate-wiggle text-rose" strokeWidth={1.25} />
+        )}
         <h1 className="section-title mt-6">
           {done.waitlisted ? "You're on the waitlist!" : "Request received!"}
         </h1>
         <p className="mt-4 text-plum/75">
           {done.waitlisted
-            ? "I'm currently at full capacity, so you've been added to the waitlist. I'll reach out as soon as a spot opens up — thank you for your patience! ♡"
-            : "Thank you so much! I'll read over your request and get back to you soon to confirm the details and final price before any payment. ♡"}
+            ? "I'm currently at full capacity, so you've been added to the waitlist. I'll reach out as soon as a spot opens up — thank you for your patience!"
+            : "Thank you so much! I'll read over your request and get back to you soon to confirm the details and final price before any payment."}
         </p>
         <p className="mt-4 text-plum/60">
           Your estimate was{" "}
@@ -89,7 +94,7 @@ export default function CommissionsPage() {
       <h1 className="section-title text-center">Request a commission</h1>
       <p className="mt-3 text-center text-plum/70">
         Build your piece below to see an estimate. I&apos;ll review every request
-        personally and confirm the final price before you pay. ✨
+        personally and confirm the final price before you pay.
       </p>
 
       <div className="mt-12 grid gap-8 lg:grid-cols-[1.6fr_1fr]">
@@ -128,10 +133,10 @@ export default function CommissionsPage() {
             <div className="mt-4 flex items-center gap-4">
               <button
                 onClick={() => setExtraSubjects((n) => Math.max(0, n - 1))}
-                className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-bubblegum text-2xl text-grape hover:bg-petal"
+                className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-bubblegum text-grape hover:bg-petal"
                 aria-label="Remove a subject"
               >
-                −
+                <Minus className="h-5 w-5" />
               </button>
               <div className="text-center">
                 <div className="font-display text-3xl text-grape">{1 + extraSubjects}</div>
@@ -141,10 +146,10 @@ export default function CommissionsPage() {
               </div>
               <button
                 onClick={() => setExtraSubjects((n) => Math.min(20, n + 1))}
-                className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-bubblegum text-2xl text-grape hover:bg-petal"
+                className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-bubblegum text-grape hover:bg-petal"
                 aria-label="Add a subject"
               >
-                +
+                <Plus className="h-5 w-5" />
               </button>
               {extraSubjects > 0 && (
                 <span className="ml-2 text-sm font-semibold text-rose">
@@ -167,11 +172,11 @@ export default function CommissionsPage() {
             >
               <span className="flex items-center gap-3">
                 <span
-                  className={`flex h-6 w-6 items-center justify-center rounded-md border-2 text-sm text-white ${
+                  className={`flex h-6 w-6 items-center justify-center rounded-md border-2 text-white ${
                     complexBg ? "border-rose bg-rose" : "border-bubblegum"
                   }`}
                 >
-                  {complexBg ? "✓" : ""}
+                  {complexBg && <Check className="h-4 w-4" strokeWidth={3} />}
                 </span>
                 <span>
                   <span className="block font-semibold text-grape">
@@ -193,7 +198,7 @@ export default function CommissionsPage() {
               value={request}
               onChange={(e) => setRequest(e.target.value)}
               rows={5}
-              placeholder="Tell me everything! What/who would you like drawn, colors, style, reference photos you'll send, the vibe, deadline... the more detail the better ♡"
+              placeholder="Tell me everything! What/who would you like drawn, colors, style, reference photos you'll send, the vibe, deadline... the more detail the better"
               className="mt-4 w-full rounded-2xl border-2 border-petal/60 bg-white/70 p-4 text-plum placeholder:text-plum/40 focus:border-rose focus:outline-none"
             />
             <p className="mt-2 text-sm text-plum/60">
@@ -209,7 +214,9 @@ export default function CommissionsPage() {
         {/* ---------- ESTIMATE SUMMARY ---------- */}
         <div className="lg:sticky lg:top-24 lg:self-start">
           <div className="card border-2 border-bubblegum/60">
-            <h2 className="font-display text-2xl text-grape">Your estimate ♡</h2>
+            <h2 className="flex items-center gap-2 font-display text-2xl text-grape">
+              Your estimate <Heart className="h-5 w-5" strokeWidth={1.75} />
+            </h2>
 
             {!estimate ? (
               <p className="mt-4 text-sm text-plum/60">
@@ -234,9 +241,12 @@ export default function CommissionsPage() {
               </>
             )}
 
-            <div className="mt-4 rounded-2xl bg-lilac/50 p-3 text-xs text-plum/75">
-              💜 This is an <strong>estimate</strong>. I review every request and
-              confirm the final price with you before any payment — no surprises.
+            <div className="mt-4 flex gap-2 rounded-2xl bg-lilac/50 p-3 text-xs text-plum/75">
+              <Heart className="mt-0.5 h-4 w-4 shrink-0 text-rose" strokeWidth={2} />
+              <span>
+                This is an <strong>estimate</strong>. I review every request and
+                confirm the final price with you before any payment — no surprises.
+              </span>
             </div>
 
             {/* contact fields */}
@@ -263,11 +273,17 @@ export default function CommissionsPage() {
               disabled={loading}
               className="btn-primary mt-5 w-full disabled:opacity-60"
             >
-              {loading ? "Sending your request…" : "💌 Send commission request"}
+              {loading ? (
+                "Sending your request…"
+              ) : (
+                <>
+                  <Mail className="h-4 w-4" /> Send commission request
+                </>
+              )}
             </button>
             <p className="mt-3 text-center text-xs text-plum/60">
               No payment now. I&apos;ll reply with a secure payment link once your
-              details are confirmed. ♡
+              details are confirmed.
             </p>
           </div>
         </div>

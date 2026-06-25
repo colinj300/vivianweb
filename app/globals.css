@@ -35,9 +35,10 @@ body {
       hover:scale-105 hover:shadow-glow active:scale-95;
     background-color: #ffffff;
     background-image:
-      repeating-linear-gradient(90deg, rgba(140, 100, 189, 0.55) 0 8px, transparent 8px 16px),
-      repeating-linear-gradient(0deg, rgba(140, 100, 189, 0.55) 0 8px, transparent 8px 16px);
-    border: 2px solid rgba(140, 100, 189, 0.55);
+      repeating-linear-gradient(90deg, rgba(140, 100, 189, 0.35) 0 9px, transparent 9px 18px),
+      repeating-linear-gradient(0deg, rgba(140, 100, 189, 0.35) 0 9px, transparent 9px 18px);
+    border: 2px solid rgba(140, 100, 189, 0.65);
+    text-shadow: 0 0 5px rgba(255, 255, 255, 0.95), 0 1px 0 rgba(255, 255, 255, 0.95);
   }
   .btn-secondary {
     @apply inline-flex items-center justify-center gap-2 rounded-full
@@ -45,9 +46,10 @@ body {
       hover:scale-105 active:scale-95;
     background-color: #ffffff;
     background-image:
-      repeating-linear-gradient(90deg, rgba(62, 95, 174, 0.35) 0 8px, transparent 8px 16px),
-      repeating-linear-gradient(0deg, rgba(62, 95, 174, 0.35) 0 8px, transparent 8px 16px);
-    border: 2px solid rgba(62, 95, 174, 0.4);
+      repeating-linear-gradient(90deg, rgba(62, 95, 174, 0.24) 0 9px, transparent 9px 18px),
+      repeating-linear-gradient(0deg, rgba(62, 95, 174, 0.24) 0 9px, transparent 9px 18px);
+    border: 2px solid rgba(62, 95, 174, 0.5);
+    text-shadow: 0 0 5px rgba(255, 255, 255, 0.95), 0 1px 0 rgba(255, 255, 255, 0.95);
   }
   .card {
     @apply rounded-3xl bg-white/90 p-6 shadow-soft backdrop-blur

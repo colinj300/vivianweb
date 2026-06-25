@@ -14,7 +14,7 @@ const quicksand = Quicksand({
 // Advercase is a retro serif built on Apple's 80s Garamond. EB Garamond is a
 // free-for-commercial Garamond that captures the same look.
 //
-// 👉 To use the REAL Advercase font instead:
+// To use the REAL Advercase font instead:
 //   1. Download it (from indieground.net) and drop the file in /public/fonts,
 //      e.g. /public/fonts/Advercase.woff2
 //   2. Comment out the EB_Garamond block below, and uncomment this one:

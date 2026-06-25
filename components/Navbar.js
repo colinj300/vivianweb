@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { Menu, X, Flower2 } from "lucide-react";
 import { site } from "@/lib/config";
 
 const links = [
@@ -19,7 +20,10 @@ export default function Navbar() {
     <header className="sticky top-0 z-50 bg-white/70 backdrop-blur-md border-b border-petal/60">
       <nav className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4">
         <Link href="/" className="font-display text-2xl text-rose hover:text-grape transition-colors">
-          {site.artistName} <span className="animate-sparkle inline-block">✿</span>
+          <span className="inline-flex items-center gap-1.5">
+            {site.artistName}
+            <Flower2 className="h-5 w-5 animate-sparkle" strokeWidth={1.75} />
+          </span>
         </Link>
 
         {/* desktop */}
@@ -47,7 +51,7 @@ export default function Navbar() {
           onClick={() => setOpen((o) => !o)}
           aria-label="Toggle menu"
         >
-          {open ? "✕" : "☰"}
+          {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
         </button>
       </nav>
 

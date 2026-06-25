@@ -58,11 +58,11 @@ export async function POST(req) {
     if (emailCustomer) {
       await sendEmail({
         to: commission.email,
-        subject: `Your commission from ${site.artistName} — payment link 💜`,
+        subject: `Your commission from ${site.artistName} — payment link`,
         text:
           `Hi ${commission.name}!\n\nThank you for your commission request. ` +
           `Here's your secure payment link for $${dollars}:\n${link.url}\n\n` +
-          `Once payment is received I'll get started. Thank you! ♡\n— ${site.artistName}`,
+          `Once payment is received I'll get started. Thank you!\n— ${site.artistName}`,
       });
     }
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Palette } from "lucide-react";
 
 // Shows the artwork if the image file exists in /public/art.
 // If it's missing (e.g. before real art is uploaded), it falls back to a
@@ -32,7 +33,7 @@ export default function ArtImage({ src, title, note, index = 0 }) {
         <div
           className={`flex h-64 w-full items-center justify-center bg-gradient-to-br ${grad}`}
         >
-          <span className="text-5xl animate-float">🎨</span>
+          <Palette className="h-12 w-12 animate-float text-white/85" strokeWidth={1.5} />
         </div>
       )}
 

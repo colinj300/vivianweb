@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Palette, Sparkles, Heart } from "lucide-react";
 import { site } from "@/lib/config";
 
 export const metadata = { title: "About" };
@@ -10,10 +11,10 @@ export default function AboutPage() {
         <div className="relative flex justify-center">
           <div className="animate-float rounded-blob bg-gradient-to-br from-petal to-lilac p-2 shadow-soft">
             <div className="flex h-56 w-56 items-center justify-center rounded-blob bg-white/60">
-              <span className="text-6xl">👩‍🎨</span>
+              <Palette className="h-24 w-24 text-rose" strokeWidth={1.25} />
             </div>
           </div>
-          <span className="absolute -top-2 right-6 text-2xl animate-sparkle">✨</span>
+          <Sparkles className="absolute -top-2 right-6 h-7 w-7 animate-sparkle text-grape" strokeWidth={1.5} />
         </div>
 
         <div>
@@ -22,7 +23,7 @@ export default function AboutPage() {
             {site.bio}
           </p>
           <Link href="/commissions" className="btn-primary mt-8">
-            Let&apos;s make something ♡
+            Let&apos;s make something <Heart className="h-4 w-4" />
           </Link>
         </div>
       </div>

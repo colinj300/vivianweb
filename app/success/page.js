@@ -1,12 +1,13 @@
 import Link from "next/link";
+import { PartyPopper } from "lucide-react";
 
-export const metadata = { title: "Order received ♡" };
+export const metadata = { title: "Order received" };
 
 export default function SuccessPage() {
   return (
     <div className="mx-auto flex max-w-xl flex-col items-center px-5 py-24 text-center">
-      <div className="text-6xl animate-wiggle">🎉</div>
-      <h1 className="section-title mt-6">Yay! Your order is in ♡</h1>
+      <PartyPopper className="h-16 w-16 animate-wiggle text-rose" strokeWidth={1.25} />
+      <h1 className="section-title mt-6">Yay! Your order is in</h1>
       <p className="mt-4 text-plum/75">
         Thank you so much for your commission! A confirmation has been sent to
         your email. I&apos;ll review your details and reach out about your

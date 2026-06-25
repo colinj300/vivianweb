@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { RefreshCw, Ruler, User, Mountain, DollarSign, CreditCard } from "lucide-react";
 
 const STATUS_META = {
   pending: { label: "Pending review", color: "bg-lilac text-plum" },
@@ -111,7 +112,7 @@ export default function AdminPage() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="section-title">Commissions</h1>
         <button onClick={() => load(pw)} className="btn-secondary !py-2 text-sm">
-          ↻ Refresh
+          <RefreshCw className="h-4 w-4" /> Refresh
         </button>
       </div>
 
@@ -138,7 +139,7 @@ export default function AdminPage() {
       {/* requests */}
       <div className="mt-8 space-y-5">
         {data.commissions.length === 0 && (
-          <p className="text-center text-plum/60">No requests yet. ♡</p>
+          <p className="text-center text-plum/60">No requests yet.</p>
         )}
         {data.commissions.map((c) => (
           <CommissionCard
@@ -178,10 +179,10 @@ function CommissionCard({ c, busy, onStatus, onPrice, onLink }) {
       </div>
 
       <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-sm text-plum/80">
-        <span>📐 {c.sizeName}</span>
-        <span>👤 {1 + (c.additionalSubjects || 0)} subject(s)</span>
-        <span>🌄 {c.complexBackground ? "complex bg" : "no bg"}</span>
-        <span>💵 est ${c.estimate}{c.finalPrice ? ` · final $${c.finalPrice}` : ""}</span>
+        <span className="flex items-center gap-1"><Ruler className="h-4 w-4" /> {c.sizeName}</span>
+        <span className="flex items-center gap-1"><User className="h-4 w-4" /> {1 + (c.additionalSubjects || 0)} subject(s)</span>
+        <span className="flex items-center gap-1"><Mountain className="h-4 w-4" /> {c.complexBackground ? "complex bg" : "no bg"}</span>
+        <span className="flex items-center gap-1"><DollarSign className="h-4 w-4" /> est ${c.estimate}{c.finalPrice ? ` · final $${c.finalPrice}` : ""}</span>
       </div>
 
       <p className="mt-3 whitespace-pre-line rounded-2xl bg-blush/70 p-3 text-sm text-plum/80">
@@ -235,7 +236,7 @@ function CommissionCard({ c, busy, onStatus, onPrice, onLink }) {
           onClick={() => onLink(c.id, price, emailCustomer)}
           className="btn-primary !py-2 text-sm"
         >
-          💳 Create payment link
+          <CreditCard className="h-4 w-4" /> Create payment link
         </button>
       </div>
 

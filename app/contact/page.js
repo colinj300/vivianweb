@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Mail, Heart } from "lucide-react";
 import { site } from "@/lib/config";
 
 export default function ContactPage() {
@@ -38,7 +39,9 @@ export default function ContactPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-5 py-16">
-      <h1 className="section-title text-center">Let&apos;s chat ♡</h1>
+      <h1 className="section-title flex items-center justify-center gap-2 text-center">
+        Let&apos;s chat <Heart className="h-7 w-7" strokeWidth={1.75} />
+      </h1>
       <p className="mt-3 text-center text-plum/70">
         Have a question or a special request before you order? Send a message
         and I&apos;ll get back to you soon!
@@ -47,10 +50,10 @@ export default function ContactPage() {
       <div className="card mt-10">
         {status === "sent" ? (
           <div className="py-10 text-center">
-            <div className="text-5xl animate-wiggle">💌</div>
+            <Mail className="mx-auto h-12 w-12 animate-wiggle text-rose" strokeWidth={1.5} />
             <h2 className="mt-4 font-display text-3xl text-grape">Message sent!</h2>
             <p className="mt-2 text-plum/70">
-              Thank you for reaching out — I&apos;ll reply as soon as I can. ♡
+              Thank you for reaching out — I&apos;ll reply as soon as I can.
             </p>
             <button onClick={() => setStatus("idle")} className="btn-secondary mt-6">
               Send another
@@ -76,7 +79,7 @@ export default function ContactPage() {
                 value={form.email}
                 onChange={update("email")}
                 className="w-full rounded-2xl border-2 border-petal/60 bg-white/70 p-3 text-plum placeholder:text-plum/40 focus:border-rose focus:outline-none"
-                placeholder="so I can reply ♡"
+                placeholder="so I can reply"
               />
             </div>
             <div>
@@ -105,7 +108,13 @@ export default function ContactPage() {
               disabled={status === "sending"}
               className="btn-primary w-full disabled:opacity-60"
             >
-              {status === "sending" ? "Sending…" : "💌 Send message"}
+              {status === "sending" ? (
+                "Sending…"
+              ) : (
+                <>
+                  <Mail className="h-4 w-4" /> Send message
+                </>
+              )}
             </button>
           </form>
         )}

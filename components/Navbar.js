@@ -21,7 +21,7 @@ export default function Navbar() {
       <nav className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4">
         <Link href="/" className="font-display text-2xl text-rose hover:text-grape transition-colors">
           <span className="inline-flex items-center gap-1.5">
-            {site.artistName}
+            {site.brand}
             <Flower2 className="h-5 w-5 animate-sparkle" strokeWidth={1.75} />
           </span>
         </Link>

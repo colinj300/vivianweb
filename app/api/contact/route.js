@@ -22,7 +22,7 @@ export async function POST(req) {
     await sendEmail({
       to: site.contactEmail,
       replyTo: email,
-      subject: `New message from ${name} (${site.artistName} site)`,
+      subject: `New message from ${name} (${site.brand} site)`,
       text: `From: ${name} <${email}>\n\n${message}`,
     });
 

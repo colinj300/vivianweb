@@ -19,9 +19,9 @@ export default function Home() {
               <Heart className="h-3.5 w-3.5" strokeWidth={2} />
             </span>
             <h1 className="mt-5 font-display text-5xl leading-tight text-grape md:text-6xl">
-              {site.artistName}&apos;s
+              Visuals by
               <br />
-              <span className="text-rose">little art shop</span>
+              <span className="text-rose">Vivian</span>
             </h1>
             <p className="mt-5 max-w-md text-lg text-plum/80">{site.tagline}</p>
             <p className="mt-2 max-w-md text-plum/70">

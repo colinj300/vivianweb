@@ -52,7 +52,10 @@ const display = EB_Garamond({
 });
 
 export const metadata = {
-  title: `${site.artistName} · Art & Commissions`,
+  title: {
+    default: `${site.brand} · Art & Commissions`,
+    template: `%s · ${site.brand}`,
+  },
   description: site.tagline,
 };
 

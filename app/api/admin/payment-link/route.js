@@ -37,7 +37,7 @@ export async function POST(req) {
     const price = await stripe.prices.create({
       currency: "usd",
       unit_amount: dollars * 100,
-      product_data: { name: `${site.artistName} — Commission for ${commission.name}` },
+      product_data: { name: `${site.brand} — Commission for ${commission.name}` },
     });
 
     const link = await stripe.paymentLinks.create({
@@ -58,7 +58,7 @@ export async function POST(req) {
     if (emailCustomer) {
       await sendEmail({
         to: commission.email,
-        subject: `Your commission from ${site.artistName} — payment link`,
+        subject: `Your commission from ${site.brand} — payment link`,
         text:
           `Hi ${commission.name}!\n\nThank you for your commission request. ` +
           `Here's your secure payment link for $${dollars}:\n${link.url}\n\n` +

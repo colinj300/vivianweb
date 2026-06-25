@@ -14,9 +14,9 @@ html {
 body {
   @apply bg-blush text-plum font-body;
   background-image:
-    radial-gradient(circle at 15% 20%, rgba(205, 188, 236, 0.22), transparent 42%),
-    radial-gradient(circle at 85% 10%, rgba(216, 191, 230, 0.18), transparent 42%),
-    radial-gradient(circle at 50% 100%, rgba(232, 222, 248, 0.30), transparent 58%);
+    radial-gradient(circle at 15% 20%, rgba(186, 172, 227, 0.32), transparent 42%),
+    radial-gradient(circle at 85% 10%, rgba(140, 100, 189, 0.16), transparent 42%),
+    radial-gradient(circle at 50% 100%, rgba(62, 95, 174, 0.14), transparent 58%);
   background-attachment: fixed;
   min-height: 100vh;
 }
@@ -46,9 +46,9 @@ body {
 
 /* prettier scrollbar */
 ::-webkit-scrollbar { width: 12px; }
-::-webkit-scrollbar-track { background: #f6f2fb; }
+::-webkit-scrollbar-track { background: #f2f2fb; }
 ::-webkit-scrollbar-thumb {
-  background: #cdbcec;
+  background: #baace3;
   border-radius: 999px;
-  border: 3px solid #f6f2fb;
+  border: 3px solid #f2f2fb;
 }

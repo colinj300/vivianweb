@@ -7,24 +7,24 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // Soft pastel purple palette (gentle, low-saturation, less pink)
-        blush: "#f6f2fb", // page background — lavender white
-        petal: "#efdcef", // soft pastel pink, used sparingly
-        bubblegum: "#d8bfe6", // muted lilac (no longer neon)
-        rose: "#b488cf", // primary accent — soft orchid, purple-leaning
-        grape: "#8f72c2", // deeper accent purple
-        plum: "#5d4f7c", // muted purple for body text
-        lilac: "#e8def8",
-        lavender: "#cdbcec",
-        cream: "#fbf8ff",
+        // Palette built from #3e5fae (blue), #8c64bd (purple), #baace3 (lavender)
+        blush: "#f2f2fb", // page background — pale periwinkle white
+        petal: "#ddd6f2", // light lavender (soft accent / hovers)
+        bubblegum: "#a98fd6", // mid lavender-purple
+        rose: "#8c64bd", // primary accent — purple (#8c64bd)
+        grape: "#3e5fae", // deep accent + headings — blue (#3e5fae)
+        plum: "#2e3263", // body text — dark indigo
+        lilac: "#e7e2f7", // very light lavender
+        lavender: "#baace3", // lavender (#baace3)
+        cream: "#f8f7fd",
       },
       fontFamily: {
         display: ["var(--font-display)", "serif"],
         body: ["var(--font-body)", "sans-serif"],
       },
       boxShadow: {
-        soft: "0 10px 30px -10px rgba(143, 114, 194, 0.30)",
-        glow: "0 0 25px rgba(180, 136, 207, 0.40)",
+        soft: "0 10px 30px -10px rgba(62, 95, 174, 0.28)",
+        glow: "0 0 25px rgba(140, 100, 189, 0.45)",
       },
       borderRadius: {
         blob: "40% 60% 55% 45% / 55% 45% 60% 40%",

@@ -7,6 +7,7 @@ export const metadata = { title: "Gallery" };
 
 // How much space each piece takes — bigger canvases show bigger.
 const tierSpan = {
+  tiny: "col-span-1 sm:col-span-1 lg:col-span-1",
   small: "col-span-2 sm:col-span-2 lg:col-span-2",
   medium: "col-span-2 sm:col-span-2 lg:col-span-3",
   large: "col-span-2 sm:col-span-4 lg:col-span-6",

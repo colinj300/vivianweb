@@ -5,33 +5,50 @@ import ArtImage from "@/components/ArtImage";
 
 export const metadata = { title: "Gallery" };
 
-// How much space each piece takes — bigger canvases show bigger.
-const tierSpan = {
-  tiny: "col-span-1 sm:col-span-1 lg:col-span-1",
-  small: "col-span-2 sm:col-span-2 lg:col-span-2",
-  medium: "col-span-2 sm:col-span-2 lg:col-span-3",
-  large: "col-span-2 sm:col-span-4 lg:col-span-6",
-};
+// Each piece's height (in viewport-height units) by canvas size, so bigger
+// canvases hang bigger on the wall. Width follows the real aspect ratio.
+const tierH = { tiny: 13, small: 19, medium: 23, large: 29 };
+
+// Staggered vertical offsets so pieces sit at alternating levels, like a
+// real gallery wall instead of a tidy grid.
+const offsets = [
+  "translate-y-0",
+  "translate-y-[7vh]",
+  "-translate-y-[6vh]",
+  "translate-y-[4vh]",
+  "-translate-y-[8vh]",
+  "translate-y-[5vh]",
+];
 
 export default function GalleryPage() {
   return (
-    <div className="mx-auto max-w-6xl px-5 py-16">
-      <h1 className="section-title text-center">Gallery</h1>
-      <p className="mt-3 text-center text-plum/70">
-        A little collection of pieces I&apos;ve made.
-      </p>
-
-      <div className="mt-12 grid grid-cols-2 items-start gap-x-6 gap-y-10 sm:grid-cols-4 lg:grid-cols-6 [grid-auto-flow:dense]">
-        {gallery.map((art, i) => (
-          <div key={i} className={tierSpan[art.tier] || tierSpan.medium}>
-            <ArtImage {...art} index={i} />
-          </div>
-        ))}
+    <div className="flex min-h-[calc(100vh-68px)] flex-col px-4">
+      <div className="pt-6 text-center">
+        <h1 className="section-title">Gallery</h1>
+        <p className="mt-1 text-sm text-plum/70">
+          A little exhibition of pieces I&apos;ve made.
+        </p>
       </div>
 
-      <div className="mt-16 text-center">
-        <p className="text-plum/70">Love what you see?</p>
-        <Link href="/commissions" className="btn-primary mt-4">
+      {/* the wall */}
+      <div className="flex flex-1 flex-wrap content-center items-center justify-center gap-x-7 gap-y-0 py-4">
+        {gallery.map((art, i) => {
+          const h = tierH[art.tier] || tierH.medium;
+          const widthVh = h * (art.w / art.h);
+          return (
+            <div
+              key={i}
+              className={offsets[i % offsets.length]}
+              style={{ width: `${widthVh}vh`, maxWidth: "88vw" }}
+            >
+              <ArtImage {...art} index={i} />
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="pb-6 text-center">
+        <Link href="/commissions" className="btn-primary">
           <Sparkles className="h-4 w-4" /> Commission your own
         </Link>
       </div>

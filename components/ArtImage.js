@@ -58,10 +58,10 @@ export default function ArtImage({ src, title, size, note, w = 1, h = 1, index =
       </div>
 
       {/* striped name plaque */}
-      <figcaption className="plaque z-10 -mt-4 max-w-[88%]">
-        <span className="block font-plaque text-xl leading-tight text-plum">{title}</span>
+      <figcaption className="plaque z-10 -mt-3 max-w-[92%]">
+        <span className="block font-plaque text-base leading-tight text-plum">{title}</span>
         {(size || note) && (
-          <span className="block font-plaque text-sm text-grape">{size || note}</span>
+          <span className="block font-plaque text-xs text-grape">{size || note}</span>
         )}
       </figcaption>
     </figure>

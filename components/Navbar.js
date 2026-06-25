@@ -8,7 +8,6 @@ import { site } from "@/lib/config";
 const links = [
   { href: "/", label: "Home" },
   { href: "/gallery", label: "Gallery" },
-  { href: "/commissions", label: "Commissions" },
   { href: "/about", label: "About" },
   { href: "/contact", label: "Contact" },
 ];
@@ -69,6 +68,15 @@ export default function Navbar() {
               </Link>
             </li>
           ))}
+          <li className="pt-1">
+            <Link
+              href="/commissions"
+              onClick={() => setOpen(false)}
+              className="btn-primary w-full !py-2 text-sm"
+            >
+              Order now
+            </Link>
+          </li>
         </ul>
       )}
     </header>

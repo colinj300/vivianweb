@@ -1,7 +1,6 @@
 import Link from "next/link";
-import { Sparkles, Flower2, Heart, PawPrint, Users, Mountain, ArrowRight } from "lucide-react";
-import { site, mediums, pricing, gallery } from "@/lib/config";
-import ArtImage from "@/components/ArtImage";
+import { Sparkles, Flower2, Heart, PawPrint, Users, Mountain, ArrowRight, Frame, Printer, Sticker } from "lucide-react";
+import { site, mediums, pricing } from "@/lib/config";
 import Wordmark from "@/components/Wordmark";
 
 const allSizes = mediums.flatMap((m) => m.sizes);
@@ -78,17 +77,59 @@ export default function Home() {
         </div>
       </section>
 
-      {/* GALLERY PREVIEW */}
+      {/* BUY MY ARTWORK */}
       <section className="mx-auto max-w-6xl px-5 py-12">
-        <h2 className="section-title text-center">Recent work</h2>
-        <div className="mt-10 grid items-start gap-x-5 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
-          {gallery.slice(0, 3).map((art, i) => (
-            <ArtImage key={i} {...art} index={i} />
-          ))}
+        <h2 className="section-title text-center">Buy my artwork</h2>
+        <p className="mt-3 text-center text-plum/70">
+          Collectible mini originals now — prints and stickers coming soon!
+        </p>
+        <div className="mt-10 grid gap-6 sm:grid-cols-3">
+          {/* ACEOs — available */}
+          <div className="card flex flex-col items-center text-center transition-transform hover:-translate-y-1">
+            <Frame className="h-10 w-10 text-rose" strokeWidth={1.5} />
+            <h3 className="mt-3 font-display text-2xl text-grape">ACEOs</h3>
+            <p className="mt-2 text-sm text-plum/70">
+              Hand-painted 2.5&quot; × 3.5&quot; art cards — tiny, collectible
+              originals.
+            </p>
+            <Link href="/contact" className="btn-primary mt-4 !py-2 text-sm">
+              Inquire to buy
+            </Link>
+          </div>
+
+          {/* Prints — coming soon */}
+          <div className="card relative flex flex-col items-center text-center opacity-90">
+            <span className="absolute right-3 top-3 rounded-full bg-lilac px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-grape">
+              Available soon
+            </span>
+            <Printer className="h-10 w-10 text-bubblegum" strokeWidth={1.5} />
+            <h3 className="mt-3 font-display text-2xl text-grape">Prints</h3>
+            <p className="mt-2 text-sm text-plum/70">
+              High-quality prints of favorite pieces for your walls.
+            </p>
+            <span className="mt-4 rounded-full border-2 border-petal px-4 py-2 text-sm font-semibold text-plum/50">
+              Coming soon
+            </span>
+          </div>
+
+          {/* Stickers — coming soon */}
+          <div className="card relative flex flex-col items-center text-center opacity-90">
+            <span className="absolute right-3 top-3 rounded-full bg-lilac px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-grape">
+              Available soon
+            </span>
+            <Sticker className="h-10 w-10 text-bubblegum" strokeWidth={1.5} />
+            <h3 className="mt-3 font-display text-2xl text-grape">Stickers</h3>
+            <p className="mt-2 text-sm text-plum/70">
+              Cute weatherproof stickers of my art — perfect for anything.
+            </p>
+            <span className="mt-4 rounded-full border-2 border-petal px-4 py-2 text-sm font-semibold text-plum/50">
+              Coming soon
+            </span>
+          </div>
         </div>
         <div className="mt-10 text-center">
           <Link href="/gallery" className="btn-secondary">
-            View full gallery
+            Browse the gallery
           </Link>
         </div>
       </section>

@@ -1,90 +1,95 @@
 # Vivian's Art Shop 💜
 
-A cute, purple/pink website for displaying art and selling custom commissions,
-built with Next.js, Tailwind CSS, and Stripe.
+A cute, pastel-purple website for displaying art and taking custom commission
+requests, built with Next.js, Tailwind CSS, and Stripe.
 
 ## Pages
-- **Home** — welcome, featured styles, gallery preview, how-it-works
+- **Home** — welcome, how commissions work, gallery preview
 - **Gallery** — grid of artwork
-- **Commissions** — customize a commission (style, canvas size, add-ons) with a
-  live price total, then pay via Stripe Checkout
+- **Commissions** — pick a canvas size, add subjects/background, describe the
+  idea, and get an **estimate**. Sends a request (no instant charge).
 - **About** — artist bio
-- **Contact** — a message form for questions/requests before buying
+- **Contact** — a message form for questions before ordering
+- **Admin** (`/admin`) — your private dashboard to review requests, manage the
+  8-slot limit + waitlist, and send Stripe payment links
+
+## How a commission flows
+1. Buyer builds a request and sees an **estimate** (canvas base price + $20 per
+   extra subject + $10 for a complex background).
+2. You get a **text (and email)** with the request. It's saved to `/admin`.
+3. You review it, set the **final price**, and click **Create payment link** —
+   Stripe makes a secure link (optionally emailed to the buyer).
+4. They pay; you make the art. 🎨
+5. While 8 commissions are **in progress**, new requests auto-join a **waitlist**.
 
 ---
 
 ## 👀 Preview it on your computer
-
-You need [Node.js](https://nodejs.org) installed (version 18 or newer).
+Requires [Node.js](https://nodejs.org) 18+.
 
 ```bash
-npm install        # one time — downloads everything the site needs
-npm run dev        # starts the site
+npm install
+npm run dev      # open http://localhost:3000
 ```
 
-Then open **http://localhost:3000** in your browser. Edit any file and the page
-updates instantly.
-
-> The site fully works in preview *without* any keys. The "Pay" button will show
-> a friendly "payments aren't connected yet" message until you add your Stripe
-> key (below). The contact form works too — messages print to the terminal until
-> you connect email.
+Everything works in preview **without any keys**: payment links show a notice,
+texts/emails print to the terminal, and the waitlist uses temporary storage.
+To open the admin page in preview, set a password first:
+`ADMIN_PASSWORD=test npm run dev`, then go to `/admin`.
 
 ---
 
-## ✏️ Customize the content
-
-Almost everything you'll want to change lives in **`lib/config.js`**:
-- Artist name, tagline, bio, social links, contact email
-- Commission **styles** and their prices
-- **Canvas sizes** and their prices
-- **Add-ons** and their prices
-- The gallery list
-
-### Adding your own art
-1. Put image files in the `public/art/` folder (e.g. `public/art/bunny.jpg`).
-2. In `lib/config.js`, add them to the `gallery` list, e.g.
-   `{ src: "/art/bunny.jpg", title: "Bunny", note: "watercolor" }`.
-
-(Until real images are added, pretty gradient placeholders are shown.)
+## ✏️ Customize content
+Almost everything lives in **`lib/config.js`**: artist name, bio, socials,
+**canvas sizes & prices**, the **per-subject** and **background** prices, the
+**8-commission limit**, and the gallery list. Add art images to `public/art/`.
 
 ---
 
-## 💳 Connect Stripe (to take real payments)
+## 🔌 Turn on the real features (env vars)
+Copy `.env.example` to `.env.local` and fill in what you want. Each is optional.
 
-1. Make a free account at https://stripe.com
-2. Copy this file: rename `.env.example` to `.env.local`
-3. Paste your **Secret key** from
-   https://dashboard.stripe.com/apikeys into `STRIPE_SECRET_KEY`
-   - Use the **test** key (`sk_test_…`) first to try fake payments
-     (card `4242 4242 4242 4242`, any future date, any CVC).
-   - Switch to the **live** key (`sk_live_…`) when ready for real money.
-4. Restart `npm run dev`.
+| Feature | What to set | Where to get it |
+|---|---|---|
+| 📱 Text me requests | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM`, `OWNER_PHONE` | [twilio.com](https://twilio.com) |
+| 💾 Save requests + waitlist | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | Vercel **Storage** tab → Upstash, or [upstash.com](https://upstash.com) |
+| 🔐 Admin login | `ADMIN_PASSWORD` | pick something long & private |
+| 💳 Payment links | `STRIPE_SECRET_KEY` | [dashboard.stripe.com/apikeys](https://dashboard.stripe.com/apikeys) |
+| 📬 Email copies | `RESEND_API_KEY`, `CONTACT_FROM` | [resend.com](https://resend.com) |
 
-Each order's details (style, size, add-ons, the buyer's description) are attached
-to the payment in your Stripe Dashboard, so you'll know exactly what to make.
-
----
-
-## 📬 Connect the contact form to email (optional)
-
-1. Sign up free at https://resend.com and create an API key.
-2. Put it in `.env.local` as `RESEND_API_KEY`.
-3. Messages from the contact form will be emailed to the `contactEmail`
-   set in `lib/config.js`.
+> **Important:** the database (Upstash) is what makes the 8-slot limit and
+> waitlist remember between visits. In preview it works but resets when the
+> server restarts — add Upstash before going live.
 
 ---
 
-## 🚀 Deploy (go live)
+## 🚀 Deploy on Vercel
+1. Push to GitHub (already set up).
+2. At [vercel.com](https://vercel.com): **Add New Project** → import this repo.
+3. **Storage** tab → create a free **Upstash Redis** (auto-fills the two
+   `UPSTASH_…` vars).
+4. **Settings → Environment Variables**: add the rest from your `.env.local`
+   (Stripe, Twilio, `ADMIN_PASSWORD`, `NEXT_PUBLIC_SITE_URL` = your live URL).
+5. **Deploy.** 🎉
 
-Easiest option is **Vercel** (free, made by the Next.js team):
+> We use Vercel (not plain GitHub Pages) because the backend — payments, texts,
+> and the waitlist database — needs a small secure server, which GitHub Pages
+> can't run.
 
-1. Push this repo to GitHub (already set up).
-2. Go to https://vercel.com, "Add New Project", and import this repo.
-3. In the Vercel project settings → **Environment Variables**, add the same
-   keys from your `.env.local` (`STRIPE_SECRET_KEY`, `NEXT_PUBLIC_SITE_URL` set
-   to your live URL, and optionally `RESEND_API_KEY` / `CONTACT_FROM`).
-4. Click Deploy. Done! 🎉
+---
 
-> Note: we use Vercel instead of plain GitHub Pages because Stripe needs a small
-> secure server function to process payments, which GitHub Pages can't run.
+## 🌐 Connect your own domain
+After you buy a domain (Namecheap, GoDaddy, Google Domains, etc.):
+
+1. In Vercel: **Project → Settings → Domains → Add**, type your domain
+   (e.g. `vivianart.com`), and Vercel shows the DNS records to set.
+2. At your domain registrar, add those records:
+   - An **A record** for `@` → the IP Vercel gives, **or** the easiest route:
+     set the domain's nameservers to Vercel's, or add a **CNAME** for `www`
+     → `cname.vercel-dns.com`.
+3. Wait a few minutes for it to verify (the green checkmark in Vercel). HTTPS is
+   automatic and free.
+4. Update `NEXT_PUBLIC_SITE_URL` to `https://yourdomain.com` and redeploy so
+   payment links use your real domain.
+
+That's it — no code changes needed to switch domains. 💜

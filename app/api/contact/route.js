@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { site } from "@/lib/config";
+import { sendSMS, sendEmail } from "@/lib/notify";
 
 export async function POST(req) {
   try {
@@ -12,42 +13,19 @@ export async function POST(req) {
       );
     }
 
-    const apiKey = process.env.RESEND_API_KEY;
+    // Text Vivian the inquiry.
+    await sendSMS(
+      `💌 New message from ${name} (${email}):\n${message.slice(0, 1200)}`
+    );
 
-    // If an email provider (Resend) is configured, actually deliver the message.
-    if (apiKey) {
-      const res = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          from: process.env.CONTACT_FROM || "onboarding@resend.dev",
-          to: site.contactEmail,
-          reply_to: email,
-          subject: `🎨 New message from ${name} (${site.artistName} site)`,
-          text: `From: ${name} <${email}>\n\n${message}`,
-        }),
-      });
-
-      if (!res.ok) {
-        const detail = await res.text();
-        console.error("Resend error:", detail);
-        return NextResponse.json(
-          { error: "Could not send right now. Please email us directly." },
-          { status: 502 }
-        );
-      }
-      return NextResponse.json({ ok: true });
-    }
-
-    // No provider yet — log so nothing is lost during local preview.
-    console.log("📬 New contact message (email provider not configured yet):", {
-      name,
-      email,
-      message,
+    // Also email it if Resend is configured (nice to have a copy).
+    await sendEmail({
+      to: site.contactEmail,
+      replyTo: email,
+      subject: `🎨 New message from ${name} (${site.artistName} site)`,
+      text: `From: ${name} <${email}>\n\n${message}`,
     });
+
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("Contact error:", err);

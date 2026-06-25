@@ -2,211 +2,241 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { commissionTypes, canvasSizes, addOns } from "@/lib/config";
+import { canvasSizes, pricing } from "@/lib/config";
+import { computeEstimate } from "@/lib/pricing";
 
 export default function CommissionsPage() {
-  const [typeId, setTypeId] = useState(commissionTypes[0].id);
-  const [sizeId, setSizeId] = useState(canvasSizes[0].id);
-  const [picked, setPicked] = useState([]); // add-on ids
-  const [details, setDetails] = useState("");
+  const [sizeId, setSizeId] = useState(null);
+  const [extraSubjects, setExtraSubjects] = useState(0);
+  const [complexBg, setComplexBg] = useState(false);
+  const [request, setRequest] = useState("");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [done, setDone] = useState(null); // { waitlisted, estimate }
 
-  const type = commissionTypes.find((t) => t.id === typeId);
-  const size = canvasSizes.find((s) => s.id === sizeId);
+  const estimate = useMemo(() => {
+    if (!sizeId) return null;
+    return computeEstimate({
+      sizeId,
+      additionalSubjects: extraSubjects,
+      complexBackground: complexBg,
+    });
+  }, [sizeId, extraSubjects, complexBg]);
 
-  const total = useMemo(() => {
-    const addTotal = picked.reduce((sum, id) => {
-      const a = addOns.find((x) => x.id === id);
-      return sum + (a ? a.priceAdd : 0);
-    }, 0);
-    return type.basePrice + size.priceAdd + addTotal;
-  }, [type, size, picked]);
-
-  function toggleAddOn(id) {
-    setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
-  }
-
-  async function handleCheckout() {
+  async function submit() {
     setError("");
-    if (!name.trim() || !email.trim()) {
-      setError("Please add your name and email so we can reach you about your art. ♡");
-      return;
-    }
+    if (!sizeId) return setError("Please pick a canvas size. ♡");
+    if (!request.trim()) return setError("Tell me about your commission in the request box. ♡");
+    if (!name.trim() || !email.trim()) return setError("Please add your name and email. ♡");
+
     setLoading(true);
     try {
-      const res = await fetch("/api/checkout", {
+      const res = await fetch("/api/commissions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          typeId,
-          sizeId,
-          addOnIds: picked,
-          details,
           name,
           email,
+          sizeId,
+          additionalSubjects: extraSubjects,
+          complexBackground: complexBg,
+          request,
         }),
       });
       const data = await res.json();
-      if (data.url) {
-        window.location.href = data.url; // Stripe Checkout
+      if (res.ok) {
+        setDone({ waitlisted: data.waitlisted, estimate: data.estimate });
       } else {
         setError(data.error || "Something went wrong. Please try again.");
-        setLoading(false);
       }
-    } catch (e) {
-      setError("Could not start checkout. Please try again or contact us.");
+    } catch {
+      setError("Could not send your request. Please try again or contact us.");
+    } finally {
       setLoading(false);
     }
   }
 
+  // ---- Thank-you / confirmation screen ----
+  if (done) {
+    return (
+      <div className="mx-auto flex max-w-xl flex-col items-center px-5 py-24 text-center">
+        <div className="text-6xl animate-wiggle">{done.waitlisted ? "📝" : "💌"}</div>
+        <h1 className="section-title mt-6">
+          {done.waitlisted ? "You're on the waitlist!" : "Request received!"}
+        </h1>
+        <p className="mt-4 text-plum/75">
+          {done.waitlisted
+            ? "I'm currently at full capacity, so you've been added to the waitlist. I'll reach out as soon as a spot opens up — thank you for your patience! ♡"
+            : "Thank you so much! I'll read over your request and get back to you soon to confirm the details and final price before any payment. ♡"}
+        </p>
+        <p className="mt-4 text-plum/60">
+          Your estimate was{" "}
+          <span className="font-semibold text-rose">${done.estimate}</span> (final
+          price confirmed after review).
+        </p>
+        <div className="mt-8 flex flex-wrap justify-center gap-4">
+          <Link href="/gallery" className="btn-secondary">Browse the gallery</Link>
+          <Link href="/" className="btn-primary">Back home</Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto max-w-6xl px-5 py-16">
-      <h1 className="section-title text-center">Customize your commission</h1>
+      <h1 className="section-title text-center">Request a commission</h1>
       <p className="mt-3 text-center text-plum/70">
-        Build your perfect piece below. The price updates as you go! ✨
+        Build your piece below to see an estimate. I&apos;ll review every request
+        personally and confirm the final price before you pay. ✨
       </p>
 
       <div className="mt-12 grid gap-8 lg:grid-cols-[1.6fr_1fr]">
         {/* ---------- BUILDER ---------- */}
         <div className="space-y-8">
-          {/* TYPE */}
+          {/* CANVAS SIZE */}
           <div className="card">
-            <h2 className="font-display text-2xl text-grape">1. Choose a style</h2>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              {commissionTypes.map((t) => (
-                <button
-                  key={t.id}
-                  onClick={() => setTypeId(t.id)}
-                  className={`flex items-start gap-3 rounded-2xl border-2 p-4 text-left transition-all ${
-                    typeId === t.id
-                      ? "border-rose bg-petal/60 shadow-soft"
-                      : "border-petal/50 bg-white/60 hover:border-bubblegum"
-                  }`}
-                >
-                  <span className="text-2xl">{t.emoji}</span>
-                  <span>
-                    <span className="block font-semibold text-grape">{t.name}</span>
-                    <span className="block text-xs text-plum/70">{t.blurb}</span>
-                    <span className="mt-1 block text-sm font-semibold text-rose">
-                      from ${t.basePrice}
-                    </span>
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* SIZE */}
-          <div className="card">
-            <h2 className="font-display text-2xl text-grape">2. Pick a canvas size</h2>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <h2 className="font-display text-2xl text-grape">1. Choose a canvas size</h2>
+            <p className="mt-1 text-sm text-plum/60">
+              Each size includes one subject (like one pet in a portrait).
+            </p>
+            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
               {canvasSizes.map((s) => (
                 <button
                   key={s.id}
                   onClick={() => setSizeId(s.id)}
-                  className={`flex items-center justify-between rounded-2xl border-2 p-4 text-left transition-all ${
+                  className={`flex flex-col items-center rounded-2xl border-2 p-4 transition-all ${
                     sizeId === s.id
                       ? "border-rose bg-petal/60 shadow-soft"
                       : "border-petal/50 bg-white/60 hover:border-bubblegum"
                   }`}
                 >
-                  <span className="font-semibold text-grape">{s.name}</span>
-                  <span className="text-sm font-semibold text-rose">
-                    {s.priceAdd > 0 ? `+$${s.priceAdd}` : "included"}
-                  </span>
+                  <span className="font-display text-xl text-grape">{s.name}</span>
+                  <span className="mt-1 text-sm font-semibold text-rose">${s.basePrice}</span>
                 </button>
               ))}
             </div>
           </div>
 
-          {/* ADD-ONS */}
+          {/* SUBJECTS */}
           <div className="card">
-            <h2 className="font-display text-2xl text-grape">3. Add extras (optional)</h2>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              {addOns.map((a) => {
-                const on = picked.includes(a.id);
-                return (
-                  <button
-                    key={a.id}
-                    onClick={() => toggleAddOn(a.id)}
-                    className={`flex items-center justify-between rounded-2xl border-2 p-4 text-left transition-all ${
-                      on
-                        ? "border-rose bg-petal/60 shadow-soft"
-                        : "border-petal/50 bg-white/60 hover:border-bubblegum"
-                    }`}
-                  >
-                    <span className="flex items-center gap-2 font-semibold text-grape">
-                      <span
-                        className={`flex h-5 w-5 items-center justify-center rounded-md border-2 text-xs text-white ${
-                          on ? "border-rose bg-rose" : "border-bubblegum"
-                        }`}
-                      >
-                        {on ? "✓" : ""}
-                      </span>
-                      {a.name}
-                    </span>
-                    <span className="text-sm font-semibold text-rose">+${a.priceAdd}</span>
-                  </button>
-                );
-              })}
+            <h2 className="font-display text-2xl text-grape">2. How many subjects?</h2>
+            <p className="mt-1 text-sm text-plum/60">
+              One subject is included. Each additional subject is +${pricing.additionalSubject}.
+            </p>
+            <div className="mt-4 flex items-center gap-4">
+              <button
+                onClick={() => setExtraSubjects((n) => Math.max(0, n - 1))}
+                className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-bubblegum text-2xl text-grape hover:bg-petal"
+                aria-label="Remove a subject"
+              >
+                −
+              </button>
+              <div className="text-center">
+                <div className="font-display text-3xl text-grape">{1 + extraSubjects}</div>
+                <div className="text-xs text-plum/60">
+                  total subject{extraSubjects > 0 ? "s" : ""}
+                </div>
+              </div>
+              <button
+                onClick={() => setExtraSubjects((n) => Math.min(20, n + 1))}
+                className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-bubblegum text-2xl text-grape hover:bg-petal"
+                aria-label="Add a subject"
+              >
+                +
+              </button>
+              {extraSubjects > 0 && (
+                <span className="ml-2 text-sm font-semibold text-rose">
+                  +${extraSubjects * pricing.additionalSubject}
+                </span>
+              )}
             </div>
           </div>
 
-          {/* DETAILS */}
+          {/* BACKGROUND */}
           <div className="card">
-            <h2 className="font-display text-2xl text-grape">4. Tell me about your idea</h2>
+            <h2 className="font-display text-2xl text-grape">3. Background</h2>
+            <button
+              onClick={() => setComplexBg((v) => !v)}
+              className={`mt-4 flex w-full items-center justify-between rounded-2xl border-2 p-4 text-left transition-all ${
+                complexBg
+                  ? "border-rose bg-petal/60 shadow-soft"
+                  : "border-petal/50 bg-white/60 hover:border-bubblegum"
+              }`}
+            >
+              <span className="flex items-center gap-3">
+                <span
+                  className={`flex h-6 w-6 items-center justify-center rounded-md border-2 text-sm text-white ${
+                    complexBg ? "border-rose bg-rose" : "border-bubblegum"
+                  }`}
+                >
+                  {complexBg ? "✓" : ""}
+                </span>
+                <span>
+                  <span className="block font-semibold text-grape">
+                    Complex background / scenery
+                  </span>
+                  <span className="block text-xs text-plum/60">
+                    Landscapes or detailed settings
+                  </span>
+                </span>
+              </span>
+              <span className="font-semibold text-rose">+${pricing.complexBackground}</span>
+            </button>
+          </div>
+
+          {/* REQUEST */}
+          <div className="card">
+            <h2 className="font-display text-2xl text-grape">4. Describe your commission</h2>
             <textarea
-              value={details}
-              onChange={(e) => setDetails(e.target.value)}
-              rows={4}
-              placeholder="Describe what you'd like — characters, colors, references, vibe... the more detail the better! ♡"
+              value={request}
+              onChange={(e) => setRequest(e.target.value)}
+              rows={5}
+              placeholder="Tell me everything! What/who would you like drawn, colors, style, reference photos you'll send, the vibe, deadline... the more detail the better ♡"
               className="mt-4 w-full rounded-2xl border-2 border-petal/60 bg-white/70 p-4 text-plum placeholder:text-plum/40 focus:border-rose focus:outline-none"
             />
             <p className="mt-2 text-sm text-plum/60">
-              Not sure yet?{" "}
+              Have a question first?{" "}
               <Link href="/contact" className="font-semibold text-rose underline">
-                Message me first
+                Message me here
               </Link>{" "}
-              — I&apos;m happy to chat before you order!
+              — happy to chat before you request!
             </p>
           </div>
         </div>
 
-        {/* ---------- ORDER SUMMARY ---------- */}
+        {/* ---------- ESTIMATE SUMMARY ---------- */}
         <div className="lg:sticky lg:top-24 lg:self-start">
           <div className="card border-2 border-bubblegum/60">
-            <h2 className="font-display text-2xl text-grape">Your order ♡</h2>
+            <h2 className="font-display text-2xl text-grape">Your estimate ♡</h2>
 
-            <dl className="mt-4 space-y-2 text-sm">
-              <div className="flex justify-between">
-                <dt className="text-plum/70">{type.emoji} {type.name}</dt>
-                <dd className="font-semibold text-plum">${type.basePrice}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-plum/70">{size.name}</dt>
-                <dd className="font-semibold text-plum">
-                  {size.priceAdd > 0 ? `+$${size.priceAdd}` : "—"}
-                </dd>
-              </div>
-              {picked.map((id) => {
-                const a = addOns.find((x) => x.id === id);
-                return (
-                  <div key={id} className="flex justify-between">
-                    <dt className="text-plum/70">{a.name}</dt>
-                    <dd className="font-semibold text-plum">+${a.priceAdd}</dd>
+            {!estimate ? (
+              <p className="mt-4 text-sm text-plum/60">
+                Pick a canvas size to see your estimate.
+              </p>
+            ) : (
+              <>
+                <dl className="mt-4 space-y-2 text-sm">
+                  {estimate.lines.map((l, i) => (
+                    <div key={i} className="flex justify-between gap-3">
+                      <dt className="text-plum/70">{l.label}</dt>
+                      <dd className="font-semibold text-plum">${l.amount}</dd>
+                    </div>
+                  ))}
+                </dl>
+                <div className="mt-4 border-t border-petal pt-4">
+                  <div className="flex items-end justify-between">
+                    <span className="text-plum/70">Estimated total</span>
+                    <span className="font-display text-3xl text-rose">${estimate.total}</span>
                   </div>
-                );
-              })}
-            </dl>
+                </div>
+              </>
+            )}
 
-            <div className="mt-4 border-t border-petal pt-4">
-              <div className="flex items-end justify-between">
-                <span className="text-plum/70">Total</span>
-                <span className="font-display text-3xl text-rose">${total}</span>
-              </div>
+            <div className="mt-4 rounded-2xl bg-lilac/50 p-3 text-xs text-plum/75">
+              💜 This is an <strong>estimate</strong>. I review every request and
+              confirm the final price with you before any payment — no surprises.
             </div>
 
             {/* contact fields */}
@@ -229,15 +259,15 @@ export default function CommissionsPage() {
             {error && <p className="mt-3 text-sm font-semibold text-rose">{error}</p>}
 
             <button
-              onClick={handleCheckout}
+              onClick={submit}
               disabled={loading}
               className="btn-primary mt-5 w-full disabled:opacity-60"
             >
-              {loading ? "Taking you to checkout…" : `💳 Pay $${total} with Stripe`}
+              {loading ? "Sending your request…" : "💌 Send commission request"}
             </button>
             <p className="mt-3 text-center text-xs text-plum/60">
-              Secure checkout powered by Stripe. You&apos;ll get an email
-              confirmation. ♡
+              No payment now. I&apos;ll reply with a secure payment link once your
+              details are confirmed. ♡
             </p>
           </div>
         </div>

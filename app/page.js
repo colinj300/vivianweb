@@ -1,6 +1,8 @@
 import Link from "next/link";
-import { site, commissionTypes, gallery } from "@/lib/config";
+import { site, canvasSizes, pricing, gallery } from "@/lib/config";
 import ArtImage from "@/components/ArtImage";
+
+const startingPrice = Math.min(...canvasSizes.map((s) => s.basePrice));
 
 export default function Home() {
   return (
@@ -46,25 +48,29 @@ export default function Home() {
         </div>
       </section>
 
-      {/* COMMISSION TYPES */}
+      {/* WHAT I MAKE / PRICING */}
       <section className="mx-auto max-w-6xl px-5 py-12">
-        <h2 className="section-title text-center">What I can make for you</h2>
+        <h2 className="section-title text-center">Commissions</h2>
         <p className="mt-3 text-center text-plum/70">
-          Pick a style — then customize everything on the order page.
+          Custom pet portraits and more — pick your canvas size, add subjects,
+          and tell me your idea. Pieces start at ${startingPrice}.
         </p>
-        <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {commissionTypes.map((t) => (
-            <div key={t.id} className="card text-center transition-transform hover:-translate-y-1">
-              <div className="text-4xl">{t.emoji}</div>
-              <h3 className="mt-3 font-display text-2xl text-grape">{t.name}</h3>
-              <p className="mt-2 text-sm text-plum/70">{t.blurb}</p>
-              <p className="mt-4 font-semibold text-rose">from ${t.basePrice}</p>
+        <div className="mt-10 grid gap-6 sm:grid-cols-3">
+          {[
+            { emoji: "🐾", t: "Pick your size", d: `Choose from ${canvasSizes[0].name} up to ${canvasSizes[canvasSizes.length - 1].name}. Each size includes one subject.` },
+            { emoji: "👯", t: "Add subjects", d: `Want more than one pet or person? Each extra subject is just +$${pricing.additionalSubject}.` },
+            { emoji: "🌄", t: "Custom scenery", d: `Add a complex background or landscape for +$${pricing.complexBackground}.` },
+          ].map((c) => (
+            <div key={c.t} className="card text-center transition-transform hover:-translate-y-1">
+              <div className="text-4xl">{c.emoji}</div>
+              <h3 className="mt-3 font-display text-2xl text-grape">{c.t}</h3>
+              <p className="mt-2 text-sm text-plum/70">{c.d}</p>
             </div>
           ))}
         </div>
         <div className="mt-10 text-center">
           <Link href="/commissions" className="btn-primary">
-            Start your custom order →
+            Request a commission →
           </Link>
         </div>
       </section>
@@ -89,8 +95,8 @@ export default function Home() {
         <h2 className="section-title text-center">How it works</h2>
         <div className="mt-10 grid gap-6 md:grid-cols-3">
           {[
-            { n: "1", t: "Customize", d: "Choose your art style, canvas size, and any extras on the commission page." },
-            { n: "2", t: "Chat & checkout", d: "Have questions first? Message me anytime. When you're ready, pay securely with Stripe." },
+            { n: "1", t: "Send a request", d: "Pick your canvas size and subjects, describe your idea, and see an instant estimate." },
+            { n: "2", t: "I confirm & you pay", d: "I review your request, confirm the final price, and send you a secure Stripe payment link." },
             { n: "3", t: "Receive your art", d: "I'll create your piece with love and send it your way. Yay! 🎉" },
           ].map((s) => (
             <div key={s.n} className="card text-center">

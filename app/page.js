@@ -92,8 +92,8 @@ export default function Home() {
               Hand-painted 2.5&quot; × 3.5&quot; art cards — tiny, collectible
               originals.
             </p>
-            <Link href="/contact" className="btn-primary mt-4 !py-2 text-sm">
-              Inquire to buy
+            <Link href="/shop" className="btn-primary mt-4 !py-2 text-sm">
+              Shop ACEOs
             </Link>
           </div>
 

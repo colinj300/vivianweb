@@ -95,6 +95,14 @@ and redeploy. HTTPS is automatic.
 `ADMIN_PASSWORD` + Upstash (Step 2) + `STRIPE_SECRET_KEY` + `NEXT_PUBLIC_SITE_URL`.
 Add chat and notifications whenever you like.
 
+## Selling ACEOs
+In **/admin → ACEO Shop**: upload a photo, give it a title, set the price
+($8 by default), and **Add listing** — it appears instantly on the public
+**/shop** page. Buyers pay via Stripe (with shipping address). When a piece
+sells it's marked sold automatically; you can also Mark sold / available or
+delete a listing yourself. (Photo uploads need the Vercel Blob store from
+Step 4b; checkout needs the Stripe key from Step 4.)
+
 ## Your daily workflow
 1. Request comes in → you get notified / see it in **/admin**.
 2. Review it, set the **final price**, click **Create payment link**.

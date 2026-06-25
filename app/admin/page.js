@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { RefreshCw, Ruler, User, Mountain, DollarSign, CreditCard } from "lucide-react";
+import { useEffect, useState, useCallback, useRef } from "react";
+import { RefreshCw, Ruler, User, Mountain, DollarSign, CreditCard, ImagePlus, Trash2 } from "lucide-react";
 import { STATUSES, STATUS_LABELS, STAGES, STAGE_LABELS } from "@/lib/commissions";
+import { aceoPrice } from "@/lib/config";
 
 const STATUS_COLOR = {
   pending: "bg-lilac text-plum",
@@ -19,6 +20,7 @@ export default function AdminPage() {
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [view, setView] = useState("commissions"); // commissions | aceos
 
   // The session cookie is sent automatically — no password handling here.
   const load = useCallback(async () => {
@@ -114,16 +116,38 @@ export default function AdminPage() {
   return (
     <div className="mx-auto max-w-5xl px-5 py-12">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="section-title">Commissions</h1>
+        <div className="inline-flex rounded-full border-2 border-petal bg-white/60 p-1">
+          {[
+            ["commissions", "Commissions"],
+            ["aceos", "ACEO Shop"],
+          ].map(([v, label]) => (
+            <button
+              key={v}
+              onClick={() => setView(v)}
+              className={`rounded-full px-4 py-1.5 text-sm font-bold transition ${
+                view === v ? "bg-rose text-white shadow-soft" : "text-grape hover:bg-petal/60"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
         <div className="flex gap-2">
-          <button onClick={() => load()} className="btn-secondary !py-2 text-sm">
-            <RefreshCw className="h-4 w-4" /> Refresh
-          </button>
+          {view === "commissions" && (
+            <button onClick={() => load()} className="btn-secondary !py-2 text-sm">
+              <RefreshCw className="h-4 w-4" /> Refresh
+            </button>
+          )}
           <button onClick={logout} className="btn-secondary !py-2 text-sm">
             Log out
           </button>
         </div>
       </div>
+
+      {view === "aceos" && <AceoManager />}
+      {view === "commissions" && (
+      <>
+      <h1 className="sr-only">Commissions</h1>
 
       {/* slot summary */}
       <div className="mt-6 grid gap-4 sm:grid-cols-3">
@@ -162,6 +186,8 @@ export default function AdminPage() {
           />
         ))}
       </div>
+      </>
+      )}
     </div>
   );
 }
@@ -325,6 +351,169 @@ function CommissionCard({ c, busy, onStatus, onStage, onPrice, onLink }) {
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+function AceoManager() {
+  const [aceos, setAceos] = useState(null);
+  const [title, setTitle] = useState("");
+  const [price, setPrice] = useState(aceoPrice);
+  const [imageUrl, setImageUrl] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+  const fileRef = useRef(null);
+
+  async function load() {
+    const res = await fetch("/api/admin/aceos", { cache: "no-store" });
+    if (res.ok) setAceos((await res.json()).aceos);
+  }
+  useEffect(() => {
+    load();
+  }, []);
+
+  async function onFile(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setMsg("");
+    setUploading(true);
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await fetch("/api/upload", { method: "POST", body: fd });
+    const d = await res.json();
+    if (res.ok && d.url) setImageUrl(d.url);
+    else setMsg(res.status === 503 ? "Set up a Vercel Blob store to upload photos." : d.error || "Upload failed.");
+    setUploading(false);
+    if (fileRef.current) fileRef.current.value = "";
+  }
+
+  async function create() {
+    setMsg("");
+    if (!imageUrl) return setMsg("Upload a photo first.");
+    setBusy(true);
+    const res = await fetch("/api/admin/aceos", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title, price, imageUrl }),
+    });
+    if (res.ok) {
+      setTitle("");
+      setPrice(aceoPrice);
+      setImageUrl("");
+      await load();
+    } else {
+      const d = await res.json().catch(() => ({}));
+      setMsg(d.error || "Could not create listing.");
+    }
+    setBusy(false);
+  }
+
+  async function setStatus(id, status) {
+    setBusy(true);
+    await fetch("/api/admin/aceos", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, status }),
+    });
+    await load();
+    setBusy(false);
+  }
+
+  async function remove(id) {
+    if (!confirm("Delete this listing?")) return;
+    setBusy(true);
+    await fetch(`/api/admin/aceos?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+    await load();
+    setBusy(false);
+  }
+
+  return (
+    <div className="mt-6">
+      {/* create form */}
+      <div className="card">
+        <h2 className="font-display text-2xl text-grape">Add an ACEO</h2>
+        <div className="mt-4 flex flex-wrap items-start gap-4">
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            disabled={uploading}
+            className="flex h-32 w-24 flex-col items-center justify-center gap-1 overflow-hidden rounded-2xl border-2 border-dashed border-bubblegum text-grape hover:bg-petal disabled:opacity-60"
+          >
+            {imageUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={imageUrl} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <>
+                <ImagePlus className="h-6 w-6" />
+                <span className="text-xs font-semibold">{uploading ? "Uploading…" : "Photo"}</span>
+              </>
+            )}
+          </button>
+          <input ref={fileRef} type="file" accept="image/*" onChange={onFile} className="hidden" />
+
+          <div className="flex flex-1 flex-col gap-3">
+            <input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Title (e.g. Sleepy Cat)"
+              className="rounded-2xl border-2 border-petal/60 bg-white/70 p-3 text-plum focus:border-rose focus:outline-none"
+            />
+            <div className="flex items-center gap-2">
+              <span className="text-plum/70">$</span>
+              <input
+                type="number"
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+                className="w-24 rounded-2xl border-2 border-petal/60 bg-white/70 p-3 text-plum focus:border-rose focus:outline-none"
+              />
+              <button onClick={create} disabled={busy || uploading} className="btn-primary !py-2 text-sm disabled:opacity-60">
+                Add listing
+              </button>
+            </div>
+            {msg && <p className="text-sm font-semibold text-rose">{msg}</p>}
+          </div>
+        </div>
+      </div>
+
+      {/* listings */}
+      <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+        {aceos === null && <p className="text-plum/50">Loading…</p>}
+        {aceos && aceos.length === 0 && <p className="text-plum/60">No listings yet.</p>}
+        {(aceos || []).map((a) => (
+          <div key={a.id} className="card p-3">
+            <div className="overflow-hidden rounded-xl border-2 border-petal" style={{ aspectRatio: "2.5 / 3.5" }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={a.imageUrl}
+                alt={a.title}
+                className={`h-full w-full object-cover ${a.status === "sold" ? "opacity-60 grayscale" : ""}`}
+              />
+            </div>
+            <p className="mt-2 truncate text-center font-semibold text-grape">{a.title}</p>
+            <p className="text-center text-sm text-rose">
+              ${a.price} · {a.status}
+            </p>
+            <div className="mt-2 flex justify-center gap-2">
+              <button
+                disabled={busy}
+                onClick={() => setStatus(a.id, a.status === "sold" ? "available" : "sold")}
+                className="rounded-full border border-bubblegum px-3 py-1 text-xs font-semibold text-grape hover:bg-petal"
+              >
+                {a.status === "sold" ? "Mark available" : "Mark sold"}
+              </button>
+              <button
+                disabled={busy}
+                onClick={() => remove(a.id)}
+                className="rounded-full border border-rose/40 px-2 py-1 text-xs text-rose hover:bg-rose/10"
+                aria-label="Delete"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

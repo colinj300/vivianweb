@@ -56,12 +56,17 @@ export async function POST(req) {
     await updateCommission(id, { finalPrice: dollars, paymentLink: link.url });
 
     if (emailCustomer) {
+      const orderLine = commission.orderNumber
+        ? `Your order number is ${commission.orderNumber}. ` +
+          `Track your commission's progress any time at ${origin}/track\n\n`
+        : "";
       await sendEmail({
         to: commission.email,
         subject: `Your commission from ${site.brand} — payment link`,
         text:
           `Hi ${commission.name}!\n\nThank you for your commission request. ` +
           `Here's your secure payment link for $${dollars}:\n${link.url}\n\n` +
+          orderLine +
           `Once payment is received I'll get started. Thank you!\n— ${site.artistName}`,
       });
     }

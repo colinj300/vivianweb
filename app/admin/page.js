@@ -2,15 +2,15 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { RefreshCw, Ruler, User, Mountain, DollarSign, CreditCard } from "lucide-react";
+import { STATUSES, STATUS_LABELS, STAGES, STAGE_LABELS } from "@/lib/commissions";
 
-const STATUS_META = {
-  pending: { label: "Pending review", color: "bg-lilac text-plum" },
-  in_progress: { label: "In progress", color: "bg-bubblegum text-white" },
-  completed: { label: "Completed", color: "bg-grape text-white" },
-  waitlist: { label: "Waitlist", color: "bg-petal text-grape" },
-  declined: { label: "Declined", color: "bg-plum/20 text-plum" },
+const STATUS_COLOR = {
+  pending: "bg-lilac text-plum",
+  approved: "bg-bubblegum text-white",
+  completed: "bg-grape text-white",
+  waitlist: "bg-petal text-grape",
+  declined: "bg-plum/20 text-plum",
 };
-const STATUSES = Object.keys(STATUS_META);
 
 export default function AdminPage() {
   const [pw, setPw] = useState("");
@@ -59,6 +59,17 @@ export default function AdminPage() {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-admin-password": pw },
       body: JSON.stringify({ id, status }),
+    });
+    await load(pw);
+    setBusy(false);
+  }
+
+  async function updateStage(id, stage) {
+    setBusy(true);
+    await fetch("/api/admin/commissions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-admin-password": pw },
+      body: JSON.stringify({ id, stage }),
     });
     await load(pw);
     setBusy(false);
@@ -122,7 +133,7 @@ export default function AdminPage() {
           <div className="font-display text-4xl text-grape">
             {data.active}/{data.capacity}
           </div>
-          <div className="text-sm text-plum/70">in progress</div>
+          <div className="text-sm text-plum/70">active</div>
         </div>
         <div className="card text-center">
           <div className="font-display text-4xl text-rose">{data.openSlots}</div>
@@ -147,6 +158,7 @@ export default function AdminPage() {
             c={c}
             busy={busy}
             onStatus={updateStatus}
+            onStage={updateStage}
             onPrice={setPrice}
             onLink={makeLink}
           />
@@ -156,10 +168,10 @@ export default function AdminPage() {
   );
 }
 
-function CommissionCard({ c, busy, onStatus, onPrice, onLink }) {
+function CommissionCard({ c, busy, onStatus, onStage, onPrice, onLink }) {
   const [price, setPriceInput] = useState(c.finalPrice ?? c.estimate ?? "");
   const [emailCustomer, setEmailCustomer] = useState(true);
-  const meta = STATUS_META[c.status] || STATUS_META.pending;
+  const color = STATUS_COLOR[c.status] || STATUS_COLOR.pending;
 
   return (
     <div className="card">
@@ -173,9 +185,14 @@ function CommissionCard({ c, busy, onStatus, onPrice, onLink }) {
             {new Date(c.createdAt).toLocaleString()}
           </p>
         </div>
-        <span className={`rounded-full px-3 py-1 text-xs font-semibold ${meta.color}`}>
-          {meta.label}
-        </span>
+        <div className="text-right">
+          <span className={`rounded-full px-3 py-1 text-xs font-semibold ${color}`}>
+            {STATUS_LABELS[c.status] || c.status}
+          </span>
+          {c.orderNumber && (
+            <p className="mt-1 font-mono text-sm font-bold text-grape">{c.orderNumber}</p>
+          )}
+        </div>
       </div>
 
       <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-sm text-plum/80">
@@ -189,8 +206,29 @@ function CommissionCard({ c, busy, onStatus, onPrice, onLink }) {
         {c.request}
       </p>
 
-      {/* controls */}
+      {/* review from customer */}
+      {c.review && (
+        <div
+          className={`mt-3 rounded-2xl p-3 text-sm ${
+            c.review.response === "loved"
+              ? "bg-grape/10 text-grape"
+              : "bg-rose/10 text-plum/80"
+          }`}
+        >
+          {c.review.response === "loved" ? (
+            <span className="font-semibold text-grape">★ Customer approved this piece!</span>
+          ) : (
+            <>
+              <span className="font-semibold text-rose">Revision requested:</span>{" "}
+              {c.review.notes}
+            </>
+          )}
+        </div>
+      )}
+
+      {/* status controls */}
       <div className="mt-4 flex flex-wrap items-center gap-2">
+        <span className="text-xs font-semibold text-plum/50">Status:</span>
         {STATUSES.map((s) => (
           <button
             key={s}
@@ -202,10 +240,31 @@ function CommissionCard({ c, busy, onStatus, onPrice, onLink }) {
                 : "border border-bubblegum text-grape hover:bg-petal"
             }`}
           >
-            {STATUS_META[s].label}
+            {STATUS_LABELS[s]}
           </button>
         ))}
       </div>
+
+      {/* progress stage (only once approved) */}
+      {c.status === "approved" && (
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <span className="text-xs font-semibold text-plum/50">Progress:</span>
+          {STAGES.map((s) => (
+            <button
+              key={s}
+              disabled={busy || c.stage === s}
+              onClick={() => onStage(c.id, s)}
+              className={`rounded-full px-3 py-1 text-xs font-semibold transition disabled:opacity-40 ${
+                c.stage === s
+                  ? "bg-rose text-white"
+                  : "border border-bubblegum text-grape hover:bg-petal"
+              }`}
+            >
+              {STAGE_LABELS[s]}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* pricing + payment link */}
       <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-petal/60 pt-4">

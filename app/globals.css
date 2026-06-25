@@ -13,30 +13,44 @@ html {
 
 body {
   @apply bg-blush text-plum font-body;
+  /* Pastel polka dots over soft lavender glows */
   background-image:
-    radial-gradient(circle at 15% 20%, rgba(186, 172, 227, 0.32), transparent 42%),
-    radial-gradient(circle at 85% 10%, rgba(140, 100, 189, 0.16), transparent 42%),
-    radial-gradient(circle at 50% 100%, rgba(62, 95, 174, 0.14), transparent 58%);
+    radial-gradient(rgba(140, 100, 189, 0.16) 2.5px, transparent 2.6px),
+    radial-gradient(rgba(186, 172, 227, 0.4) 2.5px, transparent 2.6px),
+    radial-gradient(circle at 15% 20%, rgba(186, 172, 227, 0.30), transparent 42%),
+    radial-gradient(circle at 85% 10%, rgba(140, 100, 189, 0.14), transparent 42%),
+    radial-gradient(circle at 50% 100%, rgba(62, 95, 174, 0.12), transparent 58%);
+  background-size: 30px 30px, 30px 30px, auto, auto, auto;
+  background-position: 0 0, 15px 15px, center, center, center;
   background-attachment: fixed;
   min-height: 100vh;
 }
 
 /* Cute reusable bits */
 @layer components {
+  /* Gingham (picnic check) buttons — no gradients */
   .btn-primary {
     @apply inline-flex items-center justify-center gap-2 rounded-full
-      bg-gradient-to-r from-rose to-grape px-7 py-3 font-semibold
-      text-white shadow-soft transition-all duration-200
+      px-7 py-3 font-bold text-plum shadow-soft transition-all duration-200
       hover:scale-105 hover:shadow-glow active:scale-95;
+    background-color: #ffffff;
+    background-image:
+      repeating-linear-gradient(90deg, rgba(140, 100, 189, 0.55) 0 8px, transparent 8px 16px),
+      repeating-linear-gradient(0deg, rgba(140, 100, 189, 0.55) 0 8px, transparent 8px 16px);
+    border: 2px solid rgba(140, 100, 189, 0.55);
   }
   .btn-secondary {
     @apply inline-flex items-center justify-center gap-2 rounded-full
-      border-2 border-bubblegum bg-white/70 px-7 py-3 font-semibold
-      text-grape backdrop-blur transition-all duration-200
-      hover:bg-petal hover:scale-105 active:scale-95;
+      px-7 py-3 font-bold text-grape shadow-soft transition-all duration-200
+      hover:scale-105 active:scale-95;
+    background-color: #ffffff;
+    background-image:
+      repeating-linear-gradient(90deg, rgba(62, 95, 174, 0.35) 0 8px, transparent 8px 16px),
+      repeating-linear-gradient(0deg, rgba(62, 95, 174, 0.35) 0 8px, transparent 8px 16px);
+    border: 2px solid rgba(62, 95, 174, 0.4);
   }
   .card {
-    @apply rounded-3xl bg-white/80 p-6 shadow-soft backdrop-blur
+    @apply rounded-3xl bg-white/90 p-6 shadow-soft backdrop-blur
       border border-white/60;
   }
   .section-title {

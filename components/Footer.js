@@ -1,15 +1,16 @@
 import Link from "next/link";
 import { Flower2, Heart } from "lucide-react";
 import { site } from "@/lib/config";
+import Wordmark from "@/components/Wordmark";
 
 export default function Footer() {
   const { socials } = site;
   return (
     <footer className="mt-20 border-t border-petal/60 bg-white/60 backdrop-blur">
       <div className="mx-auto max-w-6xl px-5 py-10 text-center">
-        <p className="flex items-center justify-center gap-1.5 font-display text-2xl text-rose">
-          {site.brand}
-          <Flower2 className="h-5 w-5" strokeWidth={1.75} />
+        <p className="flex items-center justify-center gap-1.5">
+          <Wordmark className="text-2xl" />
+          <Flower2 className="h-5 w-5 text-rose" strokeWidth={1.75} />
         </p>
         <p className="mt-2 text-plum/70">{site.tagline}</p>
 

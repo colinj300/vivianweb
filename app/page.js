@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Sparkles, Flower2, Heart, PawPrint, Users, Mountain, ArrowRight } from "lucide-react";
 import { site, mediums, pricing, gallery } from "@/lib/config";
 import ArtImage from "@/components/ArtImage";
+import Wordmark from "@/components/Wordmark";
 
 const allSizes = mediums.flatMap((m) => m.sizes);
 const startingPrice = Math.min(...allSizes.map((s) => s.basePrice));
@@ -18,10 +19,8 @@ export default function Home() {
               commissions are open
               <Heart className="h-3.5 w-3.5" strokeWidth={2} />
             </span>
-            <h1 className="mt-5 font-display text-5xl leading-tight text-grape md:text-6xl">
-              Visuals by
-              <br />
-              <span className="text-rose">Vivian</span>
+            <h1 className="mt-5 leading-tight">
+              <Wordmark className="flex-wrap text-6xl md:text-7xl" />
             </h1>
             <p className="mt-5 max-w-md text-lg text-plum/80">{site.tagline}</p>
             <p className="mt-2 max-w-md text-plum/70">

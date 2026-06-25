@@ -22,6 +22,7 @@ module.exports = {
         display: ["var(--font-display)", "serif"],
         body: ["var(--font-body)", "sans-serif"],
         plaque: ["var(--font-plaque)", "cursive"],
+        coldia: ["var(--font-coldia)", "cursive"],
       },
       boxShadow: {
         soft: "0 10px 30px -10px rgba(62, 95, 174, 0.28)",

@@ -10,7 +10,16 @@ import { sendSMS, sendEmail } from "@/lib/notify";
 export async function POST(req) {
   try {
     const body = await req.json();
-    const { name, email, sizeId, additionalSubjects, complexBackground, request } = body;
+    const {
+      name,
+      email,
+      mediumId,
+      sizeId,
+      customSize,
+      additionalSubjects,
+      complexBackground,
+      request,
+    } = body;
 
     if (!name?.trim() || !email?.trim()) {
       return NextResponse.json(
@@ -25,9 +34,21 @@ export async function POST(req) {
       );
     }
 
-    const estimate = computeEstimate({ sizeId, additionalSubjects, complexBackground });
+    const estimate = computeEstimate({
+      mediumId,
+      sizeId,
+      customSize,
+      additionalSubjects,
+      complexBackground,
+    });
     if (!estimate) {
-      return NextResponse.json({ error: "Please pick a canvas size." }, { status: 400 });
+      return NextResponse.json({ error: "Please pick a size." }, { status: 400 });
+    }
+    if (estimate.isCustom && !customSize?.trim()) {
+      return NextResponse.json(
+        { error: "Please enter your custom size." },
+        { status: 400 }
+      );
     }
 
     // If all slots are full, this request joins the waitlist.
@@ -39,12 +60,17 @@ export async function POST(req) {
       createdAt: new Date().toISOString(),
       name: name.trim().slice(0, 200),
       email: email.trim().slice(0, 200),
+      mediumId,
+      mediumName: estimate.medium.name,
       sizeId,
-      sizeName: estimate.size.name,
+      isCustom: estimate.isCustom,
+      customSize: estimate.isCustom ? (customSize || "").trim().slice(0, 200) : "",
+      sizeName: estimate.sizeLabel,
       additionalSubjects: estimate.subjects,
       complexBackground: estimate.complexBackground,
       request: request.trim().slice(0, 4000),
       estimate: estimate.total,
+      estimateNote: estimate.isCustom ? "base price quoted at review" : "",
       finalPrice: null,
       paymentLink: null,
       status, // pending | in_progress | completed | waitlist | declined
@@ -58,10 +84,13 @@ export async function POST(req) {
 
     const subjectsNote = estimate.subjects > 0 ? `, +${estimate.subjects} subject(s)` : "";
     const bgNote = estimate.complexBackground ? ", complex bg" : "";
+    const priceNote = estimate.isCustom
+      ? `est extras $${estimate.total} + base quoted`
+      : `est $${estimate.total}`;
 
     await sendSMS(
       `New commission request${waitNote}\n${record.name} (${record.email})\n` +
-        `${estimate.size.name}${subjectsNote}${bgNote} — est $${estimate.total}\n` +
+        `${estimate.medium.name} · ${estimate.sizeLabel}${subjectsNote}${bgNote} — ${priceNote}\n` +
         `"${record.request.slice(0, 600)}"`
     );
 
@@ -71,9 +100,11 @@ export async function POST(req) {
       subject: `Commission request from ${record.name}${open ? "" : " (WAITLIST)"}`,
       text:
         `Name: ${record.name}\nEmail: ${record.email}\n` +
-        `Size: ${estimate.size.name}\nExtra subjects: ${estimate.subjects}\n` +
+        `Medium: ${estimate.medium.name}\nSize: ${estimate.sizeLabel}\n` +
+        `Extra subjects: ${estimate.subjects}\n` +
         `Complex background: ${estimate.complexBackground ? "yes" : "no"}\n` +
-        `Estimate: $${estimate.total}\nStatus: ${status}\n\nRequest:\n${record.request}`,
+        `Estimate: $${estimate.total}${estimate.isCustom ? " (extras only — base quoted at review)" : ""}\n` +
+        `Status: ${status}\n\nRequest:\n${record.request}`,
     });
 
     return NextResponse.json({

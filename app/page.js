@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { Sparkles, Flower2, Heart, PawPrint, Users, Mountain, ArrowRight } from "lucide-react";
-import { site, canvasSizes, pricing, gallery } from "@/lib/config";
+import { site, mediums, pricing, gallery } from "@/lib/config";
 import ArtImage from "@/components/ArtImage";
 
-const startingPrice = Math.min(...canvasSizes.map((s) => s.basePrice));
+const allSizes = mediums.flatMap((m) => m.sizes);
+const startingPrice = Math.min(...allSizes.map((s) => s.basePrice));
+const mediumNames = mediums.map((m) => m.name).join(" or ");
 
 export default function Home() {
   return (
@@ -59,7 +61,7 @@ export default function Home() {
         </p>
         <div className="mt-10 grid gap-6 sm:grid-cols-3">
           {[
-            { Icon: PawPrint, t: "Pick your size", d: `Choose from ${canvasSizes[0].name} up to ${canvasSizes[canvasSizes.length - 1].name}. Each size includes one subject.` },
+            { Icon: PawPrint, t: "Pick your size", d: `Choose ${mediumNames} in a range of sizes — each includes one subject.` },
             { Icon: Users, t: "Add subjects", d: `Want more than one pet or person? Each extra subject is just +$${pricing.additionalSubject}.` },
             { Icon: Mountain, t: "Custom scenery", d: `Add a complex background or landscape for +$${pricing.complexBackground}.` },
           ].map((c) => (

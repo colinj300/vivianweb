@@ -71,13 +71,24 @@ export default function AdminPage() {
       body: JSON.stringify(body),
     });
     if (res.status === 401) setAuthed(false);
+    const d = await res.json().catch(() => ({}));
     await load();
     setBusy(false);
+    return d;
   }
 
   const updateStatus = (id, status) => post({ id, status });
-  const updateStage = (id, stage) => post({ id, stage });
   const setPrice = (id, finalPrice) => post({ id, finalPrice });
+  async function updateStage(id, stage, proofImage) {
+    const d = await post({ id, stage, proofImage });
+    if (stage === "ready_for_review") {
+      alert(
+        d?.emailed
+          ? "Sent! The customer got an email with the photo and a review link."
+          : "Marked ready for review. (No email sent — set up Resend, or there's no email on file for this order.)"
+      );
+    }
+  }
 
   async function removeCommission(id) {
     if (!confirm("Decline and permanently remove this commission? This can't be undone.")) return;
@@ -210,7 +221,29 @@ export default function AdminPage() {
 function CommissionCard({ c, busy, onStatus, onStage, onPrice, onLink, onDelete }) {
   const [price, setPriceInput] = useState(c.finalPrice ?? c.estimate ?? "");
   const [emailCustomer, setEmailCustomer] = useState(true);
+  const [proofUrl, setProofUrl] = useState(c.proofImage || "");
+  const [proofBusy, setProofBusy] = useState(false);
+  const proofRef = useRef(null);
   const color = STATUS_COLOR[c.status] || STATUS_COLOR.pending;
+
+  async function uploadProof(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setProofBusy(true);
+    try {
+      const compressed = await compressImage(file);
+      const fd = new FormData();
+      fd.append("file", compressed);
+      const res = await fetch("/api/upload", { method: "POST", body: fd });
+      const d = await res.json().catch(() => ({}));
+      if (res.ok && d.url) setProofUrl(d.url);
+      else alert(d.error || "Upload failed.");
+    } catch {
+      alert("Upload failed. Please try again.");
+    }
+    setProofBusy(false);
+    if (proofRef.current) proofRef.current.value = "";
+  }
 
   return (
     <div className="card">
@@ -306,24 +339,63 @@ function CommissionCard({ c, busy, onStatus, onStage, onPrice, onLink, onDelete 
         </button>
       </div>
 
-      {/* progress stage (only once approved) */}
+      {/* progress stage + send-for-review (only once approved) */}
       {c.status === "approved" && (
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          <span className="text-xs font-semibold text-plum/50">Progress:</span>
-          {STAGES.map((s) => (
-            <button
-              key={s}
-              disabled={busy || c.stage === s}
-              onClick={() => onStage(c.id, s)}
-              className={`rounded-full px-3 py-1 text-xs font-semibold transition disabled:opacity-40 ${
-                c.stage === s
-                  ? "bg-rose text-white"
-                  : "border border-bubblegum text-grape hover:bg-petal"
-              }`}
-            >
-              {STAGE_LABELS[s]}
-            </button>
-          ))}
+        <div className="mt-2 space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-semibold text-plum/50">Progress:</span>
+            {["not_started", "in_progress"].map((s) => (
+              <button
+                key={s}
+                disabled={busy || c.stage === s}
+                onClick={() => onStage(c.id, s)}
+                className={`rounded-full px-3 py-1 text-xs font-semibold transition disabled:opacity-40 ${
+                  c.stage === s
+                    ? "bg-rose text-white"
+                    : "border border-bubblegum text-grape hover:bg-petal"
+                }`}
+              >
+                {STAGE_LABELS[s]}
+              </button>
+            ))}
+            {c.stage === "ready_for_review" && (
+              <span className="rounded-full bg-rose px-3 py-1 text-xs font-semibold text-white">
+                ✓ Sent for review
+              </span>
+            )}
+          </div>
+
+          <div className="rounded-2xl border border-petal/60 bg-blush/50 p-3">
+            <p className="text-xs font-semibold text-grape">
+              Finished? Send the customer a photo to review:
+            </p>
+            <div className="mt-2 flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={() => proofRef.current?.click()}
+                disabled={proofBusy}
+                className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-bubblegum text-grape hover:bg-petal disabled:opacity-60"
+              >
+                {proofUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={proofUrl} alt="" className="h-full w-full object-cover" />
+                ) : proofBusy ? (
+                  "…"
+                ) : (
+                  <ImagePlus className="h-5 w-5" />
+                )}
+              </button>
+              <input ref={proofRef} type="file" accept="image/*" onChange={uploadProof} className="hidden" />
+              <button
+                disabled={busy || !proofUrl}
+                onClick={() => onStage(c.id, "ready_for_review", proofUrl)}
+                className="btn-primary !py-2 text-sm disabled:opacity-50"
+              >
+                {c.stage === "ready_for_review" ? "Resend review email" : "Send for review & email customer"}
+              </button>
+              {!c.email && <span className="text-xs text-rose">no email on file</span>}
+            </div>
+          </div>
         </div>
       )}
 

@@ -13,6 +13,7 @@ function publicView(c) {
     mediumName: c.mediumName || "",
     sizeName: c.sizeName || "",
     name: c.name || "",
+    proofImage: c.proofImage || "",
     review: c.review || null,
   };
 }

@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
-import { maxActiveCommissions } from "@/lib/config";
+import { maxActiveCommissions, site } from "@/lib/config";
 import { isAuthorized } from "@/lib/admin";
 import { listCommissions, updateCommission, countActive, getByOrderNumber, deleteCommission } from "@/lib/store";
 import { STATUSES, STAGES, genOrderNumber } from "@/lib/commissions";
+import { sendEmail } from "@/lib/notify";
 
 // List all requests + slot usage.
 export async function GET(req) {
@@ -24,7 +25,7 @@ export async function POST(req) {
   if (!isAuthorized(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const { id, status, stage, finalPrice } = await req.json();
+  const { id, status, stage, finalPrice, proofImage } = await req.json();
   if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
 
   const patch = {};
@@ -61,6 +62,9 @@ export async function POST(req) {
     }
     patch.stage = stage;
   }
+  if (proofImage !== undefined && proofImage !== null && proofImage !== "") {
+    patch.proofImage = proofImage;
+  }
 
   if (finalPrice !== undefined && finalPrice !== null && finalPrice !== "") {
     patch.finalPrice = Math.round(Number(finalPrice));
@@ -68,7 +72,39 @@ export async function POST(req) {
 
   const updated = await updateCommission(id, patch);
   if (!updated) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  return NextResponse.json({ ok: true, commission: updated, warning });
+
+  // When a piece is marked ready for review, email the customer a preview
+  // photo + a link to confirm or request changes.
+  let emailed = false;
+  if (stage === "ready_for_review" && updated.email && updated.orderNumber) {
+    const origin =
+      req.headers.get("origin") || process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+    const reviewUrl = `${origin}/track?order=${encodeURIComponent(updated.orderNumber)}`;
+    const photo = updated.proofImage || "";
+    const result = await sendEmail({
+      to: updated.email,
+      subject: `Your commission is ready to review! (Order ${updated.orderNumber})`,
+      text:
+        `Hi ${updated.name},\n\nYour commission is finished and ready for your review!\n` +
+        (photo ? `Preview: ${photo}\n\n` : "\n") +
+        `Review it here (confirm you love it, or send notes for changes):\n${reviewUrl}\n\n` +
+        `Thank you! — ${site.artistName}`,
+      html:
+        `<div style="font-family:sans-serif;color:#2e3263;max-width:520px;margin:auto">` +
+        `<h2 style="color:#3e5fae">Your commission is ready! 🎨</h2>` +
+        `<p>Hi ${updated.name}, your piece is finished and ready for your review.</p>` +
+        (photo
+          ? `<p><img src="${photo}" alt="Your commission" style="max-width:100%;border-radius:14px;border:3px solid #ddd6f2"/></p>`
+          : "") +
+        `<p>Tap below to let ${site.artistName} know what you think — confirm you love it, or send notes for any changes:</p>` +
+        `<p><a href="${reviewUrl}" style="display:inline-block;background:#8c64bd;color:#fff;text-decoration:none;padding:12px 22px;border-radius:999px;font-weight:bold">Review my commission</a></p>` +
+        `<p style="color:#5d4f7c;font-size:13px">Order ${updated.orderNumber}</p>` +
+        `</div>`,
+    });
+    emailed = result.ok && !result.skipped;
+  }
+
+  return NextResponse.json({ ok: true, commission: updated, warning, emailed });
 }
 
 // Delete (decline & remove) a commission.

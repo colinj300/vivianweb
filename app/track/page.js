@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Heart, ThumbsDown, Check, Search, PartyPopper } from "lucide-react";
 import { STAGES, STAGE_LABELS } from "@/lib/commissions";
 
@@ -15,16 +15,15 @@ export default function TrackPage() {
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  async function lookup(e) {
-    e?.preventDefault();
+  const doLookup = useCallback(async (value) => {
     setError("");
     setData(null);
     setChoice(null);
     setNotes("");
-    if (!order.trim()) return setError("Please enter your order number.");
+    if (!value?.trim()) return setError("Please enter your order number.");
     setLoading(true);
     try {
-      const res = await fetch(`/api/track?order=${encodeURIComponent(order.trim())}`);
+      const res = await fetch(`/api/track?order=${encodeURIComponent(value.trim())}`);
       if (res.status === 404) {
         setError("We couldn't find that order number. Double-check it with Vivian.");
       } else if (!res.ok) {
@@ -38,6 +37,20 @@ export default function TrackPage() {
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  // Open straight to an order if the email link includes ?order=VBV-XXXXX
+  useEffect(() => {
+    const o = new URLSearchParams(window.location.search).get("order");
+    if (o) {
+      setOrder(o);
+      doLookup(o);
+    }
+  }, [doLookup]);
+
+  async function lookup(e) {
+    e?.preventDefault();
+    doLookup(order);
   }
 
   async function submitReview(response) {
@@ -103,6 +116,18 @@ export default function TrackPage() {
               </p>
             )}
           </div>
+
+          {/* preview photo of the finished piece */}
+          {data.proofImage && readyForReview && (
+            <div className="mt-6">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={data.proofImage}
+                alt="Your finished commission"
+                className="mx-auto max-h-96 w-auto rounded-2xl border-4 border-petal shadow-soft"
+              />
+            </div>
+          )}
 
           {/* progress bar */}
           <div className="mt-8 flex items-start justify-between">

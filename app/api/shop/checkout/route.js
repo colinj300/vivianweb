@@ -50,6 +50,9 @@ export async function POST(req) {
     return NextResponse.json({ url: session.url });
   } catch (err) {
     console.error("Shop checkout error:", err);
-    return NextResponse.json({ error: "Could not start checkout." }, { status: 500 });
+    return NextResponse.json(
+      { error: err?.message || "Could not start checkout." },
+      { status: 500 }
+    );
   }
 }

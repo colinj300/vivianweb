@@ -73,51 +73,78 @@ export async function POST(req) {
   const updated = await updateCommission(id, patch);
   if (!updated) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  // When a piece is marked ready for review, notify the customer (by their
-  // preferred method) with a preview photo + a link to confirm or request
-  // changes.
+  // On a progress change (in progress / ready for review), notify the
+  // customer by their preferred method.
   let notified = false;
   let channel = "";
-  if (stage === "ready_for_review" && updated.orderNumber) {
+  if ((stage === "in_progress" || stage === "ready_for_review") && updated.orderNumber) {
     const origin =
       req.headers.get("origin") || process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-    const reviewUrl = `${origin}/track?order=${encodeURIComponent(updated.orderNumber)}`;
+    const trackUrl = `${origin}/track?order=${encodeURIComponent(updated.orderNumber)}`;
     const photo = updated.proofImage || "";
     const wantsText = updated.contactMethod === "text" && updated.phone;
+    let r = { ok: false, skipped: true };
 
-    if (wantsText) {
-      const r = await sendSMSTo(
-        updated.phone,
-        `Hi ${updated.name}! Your commission from ${site.brand} is ready to review. ` +
-          `See it and confirm (or request changes): ${reviewUrl}`,
-        photo || undefined
-      );
-      notified = r.ok && !r.skipped;
-      channel = "text";
-    } else if (updated.email) {
-      const r = await sendEmail({
-        to: updated.email,
-        subject: `Your commission is ready to review! (Order ${updated.orderNumber})`,
-        text:
-          `Hi ${updated.name},\n\nYour commission is finished and ready for your review!\n` +
-          (photo ? `Preview: ${photo}\n\n` : "\n") +
-          `Review it here (confirm you love it, or send notes for changes):\n${reviewUrl}\n\n` +
-          `Thank you! — ${site.artistName}`,
-        html:
-          `<div style="font-family:sans-serif;color:#2e3263;max-width:520px;margin:auto">` +
-          `<h2 style="color:#3e5fae">Your commission is ready! 🎨</h2>` +
-          `<p>Hi ${updated.name}, your piece is finished and ready for your review.</p>` +
-          (photo
-            ? `<p><img src="${photo}" alt="Your commission" style="max-width:100%;border-radius:14px;border:3px solid #ddd6f2"/></p>`
-            : "") +
-          `<p>Tap below to let ${site.artistName} know what you think — confirm you love it, or send notes for any changes:</p>` +
-          `<p><a href="${reviewUrl}" style="display:inline-block;background:#8c64bd;color:#fff;text-decoration:none;padding:12px 22px;border-radius:999px;font-weight:bold">Review my commission</a></p>` +
-          `<p style="color:#5d4f7c;font-size:13px">Order ${updated.orderNumber}</p>` +
-          `</div>`,
-      });
-      notified = r.ok && !r.skipped;
-      channel = "email";
+    if (stage === "ready_for_review") {
+      if (wantsText) {
+        r = await sendSMSTo(
+          updated.phone,
+          `Hi ${updated.name}! Your commission from ${site.brand} is ready to review. ` +
+            `See it and confirm (or request changes): ${trackUrl}`,
+          photo || undefined
+        );
+        channel = "text";
+      } else if (updated.email) {
+        r = await sendEmail({
+          to: updated.email,
+          subject: `Your commission is ready to review! (Order ${updated.orderNumber})`,
+          text:
+            `Hi ${updated.name},\n\nYour commission is finished and ready for your review!\n` +
+            (photo ? `Preview: ${photo}\n\n` : "\n") +
+            `Review it here (confirm you love it, or send notes for changes):\n${trackUrl}\n\n` +
+            `Thank you! — ${site.artistName}`,
+          html:
+            `<div style="font-family:sans-serif;color:#2e3263;max-width:520px;margin:auto">` +
+            `<h2 style="color:#3e5fae">Your commission is ready! 🎨</h2>` +
+            `<p>Hi ${updated.name}, your piece is finished and ready for your review.</p>` +
+            (photo
+              ? `<p><img src="${photo}" alt="Your commission" style="max-width:100%;border-radius:14px;border:3px solid #ddd6f2"/></p>`
+              : "") +
+            `<p>Tap below to let ${site.artistName} know what you think — confirm you love it, or send notes for any changes:</p>` +
+            `<p><a href="${trackUrl}" style="display:inline-block;background:#8c64bd;color:#fff;text-decoration:none;padding:12px 22px;border-radius:999px;font-weight:bold">Review my commission</a></p>` +
+            `<p style="color:#5d4f7c;font-size:13px">Order ${updated.orderNumber}</p>` +
+            `</div>`,
+        });
+        channel = "email";
+      }
+    } else {
+      // in_progress
+      if (wantsText) {
+        r = await sendSMSTo(
+          updated.phone,
+          `Good news ${updated.name}! Vivian has started your commission from ${site.brand}. ` +
+            `Follow along: ${trackUrl}`
+        );
+        channel = "text";
+      } else if (updated.email) {
+        r = await sendEmail({
+          to: updated.email,
+          subject: `Your commission is now in progress! (Order ${updated.orderNumber})`,
+          text:
+            `Hi ${updated.name},\n\nGreat news — Vivian has started working on your commission! ` +
+            `Follow along here:\n${trackUrl}\n\n— ${site.artistName}`,
+          html:
+            `<div style="font-family:sans-serif;color:#2e3263;max-width:520px;margin:auto">` +
+            `<h2 style="color:#3e5fae">Your commission is underway! 🎨</h2>` +
+            `<p>Hi ${updated.name}, Vivian has started working on your piece.</p>` +
+            `<p><a href="${trackUrl}" style="display:inline-block;background:#8c64bd;color:#fff;text-decoration:none;padding:12px 22px;border-radius:999px;font-weight:bold">Follow your commission</a></p>` +
+            `<p style="color:#5d4f7c;font-size:13px">Order ${updated.orderNumber}</p>` +
+            `</div>`,
+        });
+        channel = "email";
+      }
     }
+    notified = r.ok && !r.skipped;
   }
 
   return NextResponse.json({ ok: true, commission: updated, warning, emailed: notified, channel });

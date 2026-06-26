@@ -118,6 +118,35 @@ export async function POST(req) {
         `\nRequest:\n${record.request}`,
     });
 
+    // Confirmation email to the customer.
+    const priceLine = estimate.isCustom
+      ? "Your price will be quoted when Vivian reviews your custom size."
+      : `Estimated total: $${estimate.total} (final price confirmed before any payment).`;
+    await sendEmail({
+      to: record.email,
+      subject: `Thanks for your commission request! — ${site.brand}`,
+      text:
+        `Hi ${record.name},\n\nThank you for your commission request! Here's what you asked for:\n` +
+        `${estimate.medium.name} · ${estimate.sizeLabel}\n` +
+        `${1 + estimate.subjects} subject(s), ${estimate.background.name}\n${priceLine}\n\n` +
+        (open
+          ? `Vivian will review it and reach out soon to confirm the details and price.`
+          : `Vivian is currently full, so you're on the waitlist — she'll reach out as a spot opens up.`) +
+        `\n\nThank you! — ${site.artistName}`,
+      html:
+        `<div style="font-family:sans-serif;color:#2e3263;max-width:520px;margin:auto">` +
+        `<h2 style="color:#3e5fae">Thanks for your request! 🎨</h2>` +
+        `<p>Hi ${record.name}, I got your commission request. Here's what you asked for:</p>` +
+        `<ul style="color:#5d4f7c">` +
+        `<li>${estimate.medium.name} · ${estimate.sizeLabel}</li>` +
+        `<li>${1 + estimate.subjects} subject(s) · ${estimate.background.name}</li>` +
+        `</ul>` +
+        `<p>${priceLine}</p>` +
+        `<p>${open ? "I'll review it and reach out soon to confirm the details and price." : "I'm currently full, so you're on the waitlist — I'll reach out as a spot opens up."}</p>` +
+        `<p style="color:#8c64bd">Thank you! — ${site.artistName}</p>` +
+        `</div>`,
+    });
+
     return NextResponse.json({
       ok: true,
       status,

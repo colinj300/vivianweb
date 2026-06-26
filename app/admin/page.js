@@ -87,6 +87,8 @@ export default function AdminPage() {
           ? `Sent! The customer was notified by ${d.channel === "text" ? "text" : "email"} with the photo and a review link.`
           : "Marked ready for review. (No message sent — they may have no contact info on file, or Resend/Twilio isn't set up.)"
       );
+    } else if (stage === "in_progress" && d?.emailed) {
+      alert(`"In progress" update sent to the customer by ${d.channel === "text" ? "text" : "email"}.`);
     }
   }
 
@@ -277,9 +279,17 @@ function CommissionCard({ c, busy, onStatus, onStage, onPrice, onLink, onDelete 
       {c.orderNumber && (
         <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-plum/70">
           <span>
-            {c.email || c.phone
-              ? `Updates by ${c.contactMethod === "text" ? "text" : "email"}: ${c.contactMethod === "text" ? c.phone || "—" : c.email || "—"}`
-              : "No contact info yet — send them the link →"}
+            {c.email || c.phone ? (
+              <>
+                {c.email && <>Email: {c.email}&nbsp;&nbsp;</>}
+                {c.phone && <>Phone: {c.phone}&nbsp;&nbsp;</>}
+                <span className="font-semibold text-grape">
+                  (prefers {c.contactMethod === "text" ? "text" : "email"})
+                </span>
+              </>
+            ) : (
+              "No contact info yet — send them the link →"
+            )}
           </span>
           <button
             onClick={() =>

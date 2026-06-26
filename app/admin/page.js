@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { RefreshCw, Ruler, User, Mountain, DollarSign, CreditCard, ImagePlus, Trash2 } from "lucide-react";
 import { STATUSES, STATUS_LABELS, STAGES, STAGE_LABELS } from "@/lib/commissions";
-import { aceoPrice } from "@/lib/config";
+import { aceoPrice, mediums, backgrounds } from "@/lib/config";
 import { compressImage } from "@/lib/compressImage";
 
 const STATUS_COLOR = {
@@ -170,6 +170,8 @@ export default function AdminPage() {
         </div>
       </div>
 
+      <AddCommission onAdded={() => load()} />
+
       {/* requests */}
       <div className="mt-8 space-y-5">
         {data.commissions.length === 0 && (
@@ -224,7 +226,7 @@ function CommissionCard({ c, busy, onStatus, onStage, onPrice, onLink }) {
         <span className="flex items-center gap-1"><Ruler className="h-4 w-4" /> {c.mediumName ? `${c.mediumName} · ` : ""}{c.sizeName}</span>
         <span className="flex items-center gap-1"><User className="h-4 w-4" /> {1 + (c.additionalSubjects || 0)} subject(s)</span>
         <span className="flex items-center gap-1"><Mountain className="h-4 w-4" /> {c.backgroundName || (c.complexBackground ? "complex bg" : "no bg")}</span>
-        <span className="flex items-center gap-1"><DollarSign className="h-4 w-4" /> {c.isCustom ? `extras $${c.estimate} + base TBD` : `est $${c.estimate}`}{c.finalPrice ? ` · final $${c.finalPrice}` : ""}</span>
+        <span className="flex items-center gap-1"><DollarSign className="h-4 w-4" /> {c.isCustom ? `extras $${c.estimate} + base TBD` : c.estimate != null ? `est $${c.estimate}` : "price TBD"}{c.finalPrice ? ` · final $${c.finalPrice}` : ""}</span>
       </div>
 
       <p className="mt-3 whitespace-pre-line rounded-2xl bg-blush/70 p-3 text-sm text-plum/80">
@@ -352,6 +354,104 @@ function CommissionCard({ c, busy, onStatus, onStage, onPrice, onLink }) {
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+function AddCommission({ onAdded }) {
+  const blank = {
+    name: "",
+    email: "",
+    mediumId: mediums[0].id,
+    sizeName: "",
+    subjects: 1,
+    backgroundId: "none",
+    price: "",
+    notes: "",
+  };
+  const [open, setOpen] = useState(false);
+  const [f, setF] = useState(blank);
+  const [busy, setBusy] = useState(false);
+  const [last, setLast] = useState("");
+  const set = (k) => (e) => setF((s) => ({ ...s, [k]: e.target.value }));
+
+  async function add() {
+    if (!f.name.trim()) return;
+    setBusy(true);
+    const res = await fetch("/api/admin/commissions/create", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: f.name,
+        email: f.email,
+        mediumId: f.mediumId,
+        sizeName: f.sizeName,
+        additionalSubjects: Math.max(0, (Number(f.subjects) || 1) - 1),
+        backgroundId: f.backgroundId,
+        price: f.price,
+        notes: f.notes,
+      }),
+    });
+    const d = await res.json().catch(() => ({}));
+    if (res.ok) {
+      setLast(`Added ${d.commission?.name} — order ${d.commission?.orderNumber}`);
+      setF(blank);
+      onAdded?.();
+    }
+    setBusy(false);
+  }
+
+  if (!open) {
+    return (
+      <div className="mt-6">
+        <button onClick={() => setOpen(true)} className="btn-secondary !py-2 text-sm">
+          + Add a commission (off-site order)
+        </button>
+        {last && <span className="ml-3 text-sm font-semibold text-grape">{last}</span>}
+      </div>
+    );
+  }
+
+  return (
+    <div className="card mt-6">
+      <h2 className="font-display text-2xl text-grape">Add a commission</h2>
+      <p className="mt-1 text-sm text-plum/60">
+        For orders from Instagram, in person, etc. Creates it in progress with an
+        order number.
+      </p>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <input value={f.name} onChange={set("name")} placeholder="Customer name" className="rounded-2xl border-2 border-petal/60 bg-white/70 p-3 text-plum focus:border-rose focus:outline-none" />
+        <input value={f.email} onChange={set("email")} placeholder="Email (optional)" className="rounded-2xl border-2 border-petal/60 bg-white/70 p-3 text-plum focus:border-rose focus:outline-none" />
+        <select value={f.mediumId} onChange={set("mediumId")} className="rounded-2xl border-2 border-petal/60 bg-white/70 p-3 text-plum focus:border-rose focus:outline-none">
+          {mediums.map((m) => (
+            <option key={m.id} value={m.id}>{m.name}</option>
+          ))}
+        </select>
+        <input value={f.sizeName} onChange={set("sizeName")} placeholder='Size (e.g. 11x4)' className="rounded-2xl border-2 border-petal/60 bg-white/70 p-3 text-plum focus:border-rose focus:outline-none" />
+        <label className="flex items-center gap-2 text-sm text-plum/70">
+          Subjects
+          <input type="number" min="1" value={f.subjects} onChange={set("subjects")} className="w-20 rounded-2xl border-2 border-petal/60 bg-white/70 p-2 text-plum focus:border-rose focus:outline-none" />
+        </label>
+        <select value={f.backgroundId} onChange={set("backgroundId")} className="rounded-2xl border-2 border-petal/60 bg-white/70 p-3 text-plum focus:border-rose focus:outline-none">
+          {backgrounds.map((b) => (
+            <option key={b.id} value={b.id}>{b.name}</option>
+          ))}
+        </select>
+        <label className="flex items-center gap-2 text-sm text-plum/70">
+          Price $
+          <input type="number" value={f.price} onChange={set("price")} placeholder="optional" className="w-28 rounded-2xl border-2 border-petal/60 bg-white/70 p-2 text-plum focus:border-rose focus:outline-none" />
+        </label>
+        <input value={f.notes} onChange={set("notes")} placeholder="Notes (e.g. 1 bunny)" className="rounded-2xl border-2 border-petal/60 bg-white/70 p-3 text-plum focus:border-rose focus:outline-none sm:col-span-2" />
+      </div>
+      <div className="mt-4 flex items-center gap-3">
+        <button onClick={add} disabled={busy} className="btn-primary !py-2 text-sm disabled:opacity-60">
+          {busy ? "Adding…" : "Add commission"}
+        </button>
+        <button onClick={() => setOpen(false)} className="btn-secondary !py-2 text-sm">
+          Done
+        </button>
+        {last && <span className="text-sm font-semibold text-grape">{last}</span>}
+      </div>
     </div>
   );
 }

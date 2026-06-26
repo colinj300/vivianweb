@@ -40,8 +40,13 @@ export default function Home() {
           <div className="relative flex justify-center">
             <div className="absolute -z-10 h-72 w-72 animate-float rounded-blob bg-gradient-to-br from-bubblegum to-lavender opacity-70 blur-2xl" />
             <div className="animate-float rounded-blob bg-gradient-to-br from-petal to-lilac p-2 shadow-soft">
-              <div className="flex h-72 w-72 items-center justify-center rounded-blob bg-white/60">
-                <Flower2 className="h-28 w-28 animate-wiggle text-rose" strokeWidth={1.25} />
+              <div className="flex h-72 w-72 items-center justify-center overflow-hidden rounded-blob bg-white/60">
+                {site.portrait ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={site.portrait} alt={site.artistName} className="h-full w-full object-cover" />
+                ) : (
+                  <Flower2 className="h-28 w-28 animate-wiggle text-rose" strokeWidth={1.25} />
+                )}
               </div>
             </div>
             <Sparkles className="absolute -top-2 left-4 h-8 w-8 animate-sparkle text-grape" strokeWidth={1.5} />

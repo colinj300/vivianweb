@@ -84,8 +84,8 @@ export default function AdminPage() {
     if (stage === "ready_for_review") {
       alert(
         d?.emailed
-          ? "Sent! The customer got an email with the photo and a review link."
-          : "Marked ready for review. (No email sent — set up Resend, or there's no email on file for this order.)"
+          ? `Sent! The customer was notified by ${d.channel === "text" ? "text" : "email"} with the photo and a review link.`
+          : "Marked ready for review. (No message sent — they may have no contact info on file, or Resend/Twilio isn't set up.)"
       );
     }
   }
@@ -273,6 +273,24 @@ function CommissionCard({ c, busy, onStatus, onStage, onPrice, onLink, onDelete 
         <span className="flex items-center gap-1"><Mountain className="h-4 w-4" /> {c.backgroundName || (c.complexBackground ? "complex bg" : "no bg")}</span>
         <span className="flex items-center gap-1"><DollarSign className="h-4 w-4" /> {c.isCustom ? `extras $${c.estimate} + base TBD` : c.estimate != null ? `est $${c.estimate}` : "price TBD"}{c.finalPrice ? ` · final $${c.finalPrice}` : ""}</span>
       </div>
+
+      {c.orderNumber && (
+        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-plum/70">
+          <span>
+            {c.email || c.phone
+              ? `Updates by ${c.contactMethod === "text" ? "text" : "email"}: ${c.contactMethod === "text" ? c.phone || "—" : c.email || "—"}`
+              : "No contact info yet — send them the link →"}
+          </span>
+          <button
+            onClick={() =>
+              navigator.clipboard?.writeText(`${window.location.origin}/my-order?order=${c.orderNumber}`)
+            }
+            className="rounded-full border border-bubblegum px-2 py-0.5 font-semibold text-grape hover:bg-petal"
+          >
+            Copy info-form link
+          </button>
+        </div>
+      )}
 
       <p className="mt-3 whitespace-pre-line rounded-2xl bg-blush/70 p-3 text-sm text-plum/80">
         {c.request}

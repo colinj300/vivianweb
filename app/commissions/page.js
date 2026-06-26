@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { upload } from "@vercel/blob/client";
 import { Minus, Plus, Heart, Mail, ClipboardList, ImagePlus, X } from "lucide-react";
 import { mediums, pricing, backgrounds } from "@/lib/config";
 import { computeEstimate } from "@/lib/pricing";
@@ -40,22 +41,16 @@ export default function CommissionsPage() {
     setUploading(true);
     for (const file of files) {
       if (photos.length >= 8) break;
-      const fd = new FormData();
-      fd.append("file", file);
       try {
-        const res = await fetch("/api/upload", { method: "POST", body: fd });
-        const d = await res.json();
-        if (res.ok && d.url) {
-          setPhotos((p) => [...p, { url: d.url, name: file.name }]);
-        } else if (res.status === 503) {
-          setUploadNote(
-            "Photo uploads aren't switched on yet — you can still send your request and email photos after."
-          );
-        } else {
-          setUploadNote(d.error || "Couldn't upload that image.");
-        }
+        const blob = await upload(file.name, file, {
+          access: "public",
+          handleUploadUrl: "/api/upload",
+        });
+        setPhotos((p) => [...p, { url: blob.url, name: file.name }]);
       } catch {
-        setUploadNote("Couldn't upload that image. Please try again.");
+        setUploadNote(
+          "Couldn't upload that photo — you can still send your request and email photos after."
+        );
       }
     }
     setUploading(false);

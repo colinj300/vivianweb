@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import { upload } from "@vercel/blob/client";
 import { RefreshCw, Ruler, User, Mountain, DollarSign, CreditCard, ImagePlus, Trash2 } from "lucide-react";
 import { STATUSES, STATUS_LABELS, STAGES, STAGE_LABELS } from "@/lib/commissions";
 import { aceoPrice } from "@/lib/config";
@@ -378,12 +379,15 @@ function AceoManager() {
     if (!file) return;
     setMsg("");
     setUploading(true);
-    const fd = new FormData();
-    fd.append("file", file);
-    const res = await fetch("/api/upload", { method: "POST", body: fd });
-    const d = await res.json();
-    if (res.ok && d.url) setImageUrl(d.url);
-    else setMsg(res.status === 503 ? "Set up a Vercel Blob store to upload photos." : d.error || "Upload failed.");
+    try {
+      const blob = await upload(file.name, file, {
+        access: "public",
+        handleUploadUrl: "/api/upload",
+      });
+      setImageUrl(blob.url);
+    } catch (err) {
+      setMsg(err?.message || "Upload failed. Make sure the Blob store is connected.");
+    }
     setUploading(false);
     if (fileRef.current) fileRef.current.value = "";
   }

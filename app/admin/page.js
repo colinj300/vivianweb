@@ -79,6 +79,17 @@ export default function AdminPage() {
   const updateStage = (id, stage) => post({ id, stage });
   const setPrice = (id, finalPrice) => post({ id, finalPrice });
 
+  async function removeCommission(id) {
+    if (!confirm("Decline and permanently remove this commission? This can't be undone.")) return;
+    setBusy(true);
+    const res = await fetch(`/api/admin/commissions?id=${encodeURIComponent(id)}`, {
+      method: "DELETE",
+    });
+    if (res.status === 401) setAuthed(false);
+    await load();
+    setBusy(false);
+  }
+
   async function makeLink(id, amount, emailCustomer) {
     setBusy(true);
     const res = await fetch("/api/admin/payment-link", {
@@ -186,6 +197,7 @@ export default function AdminPage() {
             onStage={updateStage}
             onPrice={setPrice}
             onLink={makeLink}
+            onDelete={removeCommission}
           />
         ))}
       </div>
@@ -195,7 +207,7 @@ export default function AdminPage() {
   );
 }
 
-function CommissionCard({ c, busy, onStatus, onStage, onPrice, onLink }) {
+function CommissionCard({ c, busy, onStatus, onStage, onPrice, onLink, onDelete }) {
   const [price, setPriceInput] = useState(c.finalPrice ?? c.estimate ?? "");
   const [emailCustomer, setEmailCustomer] = useState(true);
   const color = STATUS_COLOR[c.status] || STATUS_COLOR.pending;
@@ -271,7 +283,7 @@ function CommissionCard({ c, busy, onStatus, onStage, onPrice, onLink }) {
       {/* status controls */}
       <div className="mt-4 flex flex-wrap items-center gap-2">
         <span className="text-xs font-semibold text-plum/50">Status:</span>
-        {STATUSES.map((s) => (
+        {STATUSES.filter((s) => s !== "declined").map((s) => (
           <button
             key={s}
             disabled={busy || c.status === s}
@@ -285,6 +297,13 @@ function CommissionCard({ c, busy, onStatus, onStage, onPrice, onLink }) {
             {STATUS_LABELS[s]}
           </button>
         ))}
+        <button
+          disabled={busy}
+          onClick={() => onDelete(c.id)}
+          className="rounded-full border border-rose/50 px-3 py-1 text-xs font-semibold text-rose transition hover:bg-rose/10 disabled:opacity-40"
+        >
+          Decline &amp; remove
+        </button>
       </div>
 
       {/* progress stage (only once approved) */}

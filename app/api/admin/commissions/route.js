@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { maxActiveCommissions } from "@/lib/config";
 import { isAuthorized } from "@/lib/admin";
-import { listCommissions, updateCommission, countActive, getByOrderNumber } from "@/lib/store";
+import { listCommissions, updateCommission, countActive, getByOrderNumber, deleteCommission } from "@/lib/store";
 import { STATUSES, STAGES, genOrderNumber } from "@/lib/commissions";
 
 // List all requests + slot usage.
@@ -69,4 +69,15 @@ export async function POST(req) {
   const updated = await updateCommission(id, patch);
   if (!updated) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json({ ok: true, commission: updated, warning });
+}
+
+// Delete (decline & remove) a commission.
+export async function DELETE(req) {
+  if (!isAuthorized(req)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const id = req.nextUrl.searchParams.get("id");
+  if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
+  await deleteCommission(id);
+  return NextResponse.json({ ok: true });
 }

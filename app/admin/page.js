@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { upload } from "@vercel/blob/client";
 import { RefreshCw, Ruler, User, Mountain, DollarSign, CreditCard, ImagePlus, Trash2 } from "lucide-react";
 import { STATUSES, STATUS_LABELS, STAGES, STAGE_LABELS } from "@/lib/commissions";
 import { aceoPrice } from "@/lib/config";
+import { compressImage } from "@/lib/compressImage";
 
 const STATUS_COLOR = {
   pending: "bg-lilac text-plum",
@@ -380,13 +380,15 @@ function AceoManager() {
     setMsg("");
     setUploading(true);
     try {
-      const blob = await upload(file.name, file, {
-        access: "public",
-        handleUploadUrl: "/api/upload",
-      });
-      setImageUrl(blob.url);
-    } catch (err) {
-      setMsg(err?.message || "Upload failed. Make sure the Blob store is connected.");
+      const compressed = await compressImage(file);
+      const fd = new FormData();
+      fd.append("file", compressed);
+      const res = await fetch("/api/upload", { method: "POST", body: fd });
+      const d = await res.json().catch(() => ({}));
+      if (res.ok && d.url) setImageUrl(d.url);
+      else setMsg(d.error || "Upload failed. Make sure the Blob store is connected.");
+    } catch {
+      setMsg("Upload failed. Please try again.");
     }
     setUploading(false);
     if (fileRef.current) fileRef.current.value = "";

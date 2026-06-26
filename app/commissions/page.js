@@ -2,10 +2,10 @@
 
 import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { upload } from "@vercel/blob/client";
 import { Minus, Plus, Heart, Mail, ClipboardList, ImagePlus, X } from "lucide-react";
 import { mediums, pricing, backgrounds } from "@/lib/config";
 import { computeEstimate } from "@/lib/pricing";
+import { compressImage } from "@/lib/compressImage";
 
 export default function CommissionsPage() {
   const [mediumId, setMediumId] = useState(mediums[0].id);
@@ -42,15 +42,21 @@ export default function CommissionsPage() {
     for (const file of files) {
       if (photos.length >= 8) break;
       try {
-        const blob = await upload(file.name, file, {
-          access: "public",
-          handleUploadUrl: "/api/upload",
-        });
-        setPhotos((p) => [...p, { url: blob.url, name: file.name }]);
+        const compressed = await compressImage(file);
+        const fd = new FormData();
+        fd.append("file", compressed);
+        const res = await fetch("/api/upload", { method: "POST", body: fd });
+        const d = await res.json().catch(() => ({}));
+        if (res.ok && d.url) {
+          setPhotos((p) => [...p, { url: d.url, name: file.name }]);
+        } else {
+          setUploadNote(
+            d.error ||
+              "Couldn't upload that photo — you can still send your request and email photos after."
+          );
+        }
       } catch {
-        setUploadNote(
-          "Couldn't upload that photo — you can still send your request and email photos after."
-        );
+        setUploadNote("Couldn't upload that photo. Please try again.");
       }
     }
     setUploading(false);

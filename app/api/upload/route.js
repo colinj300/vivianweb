@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
-import { handleUpload } from "@vercel/blob/client";
+import { put } from "@vercel/blob";
 
-// Issues short-lived tokens so the browser can upload images straight to
-// Vercel Blob (bypassing the ~4.5 MB serverless body limit). Requires
-// BLOB_READ_WRITE_TOKEN (auto-set when a Blob store is connected in Vercel).
+// Receives a (browser-compressed) image and stores it in Vercel Blob.
+// Requires BLOB_READ_WRITE_TOKEN (auto-set when a Blob store is connected).
+const MAX_BYTES = 8 * 1024 * 1024;
+
 export async function POST(req) {
   if (!process.env.BLOB_READ_WRITE_TOKEN) {
     return NextResponse.json(
@@ -13,33 +14,30 @@ export async function POST(req) {
   }
 
   try {
-    const body = await req.json();
-    const json = await handleUpload({
-      body,
-      request: req,
-      onBeforeGenerateToken: async () => ({
-        allowedContentTypes: [
-          "image/jpeg",
-          "image/jpg",
-          "image/png",
-          "image/webp",
-          "image/gif",
-          "image/heic",
-          "image/heif",
-          "image/avif",
-        ],
-        maximumSizeInBytes: 15 * 1024 * 1024,
-        addRandomSuffix: true,
-      }),
-      // We get the URL from the client; nothing to do on completion.
-      onUploadCompleted: async () => {},
+    const form = await req.formData();
+    const file = form.get("file");
+    if (!file || typeof file === "string") {
+      return NextResponse.json({ error: "No file provided." }, { status: 400 });
+    }
+    if (!file.type?.startsWith("image/")) {
+      return NextResponse.json({ error: "Please upload an image." }, { status: 400 });
+    }
+    if (file.size > MAX_BYTES) {
+      return NextResponse.json({ error: "Image is too large." }, { status: 400 });
+    }
+
+    const safeName = (file.name || "photo").replace(/[^a-zA-Z0-9._-]/g, "_");
+    const blob = await put(`uploads/${Date.now()}-${safeName}`, file, {
+      access: "public",
+      addRandomSuffix: true,
     });
-    return NextResponse.json(json);
+
+    return NextResponse.json({ url: blob.url });
   } catch (err) {
     console.error("Upload error:", err);
     return NextResponse.json(
       { error: err?.message || "Could not upload image." },
-      { status: 400 }
+      { status: 500 }
     );
   }
 }

@@ -42,6 +42,7 @@ export async function POST(req) {
 
     const link = await stripe.paymentLinks.create({
       line_items: [{ price: price.id, quantity: 1 }],
+      payment_method_types: ["card"],
       metadata: {
         commission_id: commission.id,
         customer_name: commission.name,

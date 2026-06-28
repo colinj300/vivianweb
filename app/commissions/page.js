@@ -22,6 +22,15 @@ export default function CommissionsPage() {
   const [contactMethod, setContactMethod] = useState("instagram"); // instagram | text | email
   const [instagram, setInstagram] = useState("");
   const [phone, setPhone] = useState("");
+  const [ship, setShip] = useState({
+    line1: "",
+    line2: "",
+    city: "",
+    state: "",
+    zip: "",
+    country: "United States",
+  });
+  const setShipField = (k) => (e) => setShip((s) => ({ ...s, [k]: e.target.value }));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [done, setDone] = useState(null); // { waitlisted, estimate }
@@ -78,8 +87,9 @@ export default function CommissionsPage() {
       customSize,
       additionalSubjects: extraSubjects,
       backgroundId,
+      country: ship.country,
     });
-  }, [mediumId, sizeId, customSize, extraSubjects, backgroundId]);
+  }, [mediumId, sizeId, customSize, extraSubjects, backgroundId, ship.country]);
 
   const contactValue =
     contactMethod === "instagram" ? instagram : contactMethod === "text" ? phone : email;
@@ -99,6 +109,9 @@ export default function CommissionsPage() {
           : "Please add your email."
       );
     }
+    if (!ship.line1.trim() || !ship.city.trim() || !ship.state.trim() || !ship.zip.trim()) {
+      return setError("Please add your shipping address so I can include shipping.");
+    }
 
     setLoading(true);
     try {
@@ -111,6 +124,7 @@ export default function CommissionsPage() {
           instagram,
           phone,
           contactMethod,
+          shipping: ship,
           mediumId,
           sizeId,
           customSize,
@@ -393,6 +407,27 @@ export default function CommissionsPage() {
               </Link>{" "}
               — happy to chat before you request!
             </p>
+          </div>
+
+          {/* SHIPPING ADDRESS */}
+          <div className="card">
+            <h2 className="font-display text-2xl text-grape">6. Shipping address</h2>
+            <p className="mt-1 text-sm text-plum/60">
+              Where should I ship your finished piece? Shipping is added to your
+              estimate.
+            </p>
+            <div className="mt-4 space-y-3">
+              <input value={ship.line1} onChange={setShipField("line1")} placeholder="Street address" className="w-full rounded-2xl border-2 border-petal/60 bg-white/70 p-3 text-plum placeholder:text-plum/40 focus:border-rose focus:outline-none" />
+              <input value={ship.line2} onChange={setShipField("line2")} placeholder="Apt / unit (optional)" className="w-full rounded-2xl border-2 border-petal/60 bg-white/70 p-3 text-plum placeholder:text-plum/40 focus:border-rose focus:outline-none" />
+              <div className="grid grid-cols-2 gap-3">
+                <input value={ship.city} onChange={setShipField("city")} placeholder="City" className="rounded-2xl border-2 border-petal/60 bg-white/70 p-3 text-plum placeholder:text-plum/40 focus:border-rose focus:outline-none" />
+                <input value={ship.state} onChange={setShipField("state")} placeholder="State" className="rounded-2xl border-2 border-petal/60 bg-white/70 p-3 text-plum placeholder:text-plum/40 focus:border-rose focus:outline-none" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <input value={ship.zip} onChange={setShipField("zip")} placeholder="ZIP" className="rounded-2xl border-2 border-petal/60 bg-white/70 p-3 text-plum placeholder:text-plum/40 focus:border-rose focus:outline-none" />
+                <input value={ship.country} onChange={setShipField("country")} placeholder="Country" className="rounded-2xl border-2 border-petal/60 bg-white/70 p-3 text-plum placeholder:text-plum/40 focus:border-rose focus:outline-none" />
+              </div>
+            </div>
           </div>
         </div>
 

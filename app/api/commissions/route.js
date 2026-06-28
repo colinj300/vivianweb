@@ -16,6 +16,7 @@ export async function POST(req) {
       instagram,
       phone,
       contactMethod,
+      shipping: shipIn,
       mediumId,
       sizeId,
       customSize,
@@ -24,6 +25,19 @@ export async function POST(req) {
       images,
       request,
     } = body;
+
+    const clip = (v) => String(v || "").trim().slice(0, 120);
+    const shipping = shipIn
+      ? {
+          name: clip(name),
+          line1: clip(shipIn.line1),
+          line2: clip(shipIn.line2),
+          city: clip(shipIn.city),
+          state: clip(shipIn.state),
+          zip: clip(shipIn.zip),
+          country: clip(shipIn.country) || "United States",
+        }
+      : null;
 
     // images is an array of already-uploaded photo URLs (from /api/upload).
     const photos = Array.isArray(images)
@@ -51,6 +65,12 @@ export async function POST(req) {
         { status: 400 }
       );
     }
+    if (!shipping || !shipping.line1 || !shipping.city || !shipping.state || !shipping.zip) {
+      return NextResponse.json(
+        { error: "Please add your shipping address." },
+        { status: 400 }
+      );
+    }
 
     const estimate = computeEstimate({
       mediumId,
@@ -58,6 +78,7 @@ export async function POST(req) {
       customSize,
       additionalSubjects,
       backgroundId,
+      country: shipping?.country,
     });
     if (!estimate) {
       return NextResponse.json({ error: "Please pick a size." }, { status: 400 });
@@ -81,6 +102,8 @@ export async function POST(req) {
       instagram: (instagram || "").trim().slice(0, 80),
       phone: (phone || "").trim().slice(0, 40),
       contactMethod: method,
+      shipping,
+      shippingCost: estimate.shipping,
       mediumId,
       mediumName: estimate.medium.name,
       sizeId,

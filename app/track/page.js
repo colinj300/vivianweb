@@ -14,16 +14,6 @@ export default function TrackPage() {
   const [choice, setChoice] = useState(null); // "loved" | "revision"
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [ship, setShip] = useState({
-    name: "",
-    line1: "",
-    line2: "",
-    city: "",
-    state: "",
-    zip: "",
-    country: "United States",
-  });
-  const setShipField = (k) => (e) => setShip((s) => ({ ...s, [k]: e.target.value }));
 
   const doLookup = useCallback(async (value) => {
     setError("");
@@ -68,22 +58,12 @@ export default function TrackPage() {
     if (response === "revision" && !notes.trim()) {
       return setError("Please tell us what you'd like changed.");
     }
-    if (response === "loved") {
-      if (!ship.name.trim() || !ship.line1.trim() || !ship.city.trim() || !ship.state.trim() || !ship.zip.trim()) {
-        return setError("Please fill in your shipping address so Vivian can ship it.");
-      }
-    }
     setSubmitting(true);
     try {
       const res = await fetch("/api/track", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          order: data.orderNumber,
-          response,
-          notes,
-          shipping: response === "loved" ? ship : undefined,
-        }),
+        body: JSON.stringify({ order: data.orderNumber, response, notes }),
       });
       const d = await res.json();
       if (res.ok) {
@@ -208,8 +188,9 @@ export default function TrackPage() {
               </p>
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 <button
-                  onClick={() => setChoice("loved")}
-                  className={`flex flex-col items-center gap-2 rounded-2xl border-2 p-5 transition-all ${
+                  onClick={() => submitReview("loved")}
+                  disabled={submitting}
+                  className={`flex flex-col items-center gap-2 rounded-2xl border-2 p-5 transition-all disabled:opacity-60 ${
                     choice === "loved"
                       ? "border-rose bg-petal/60"
                       : "border-petal/60 bg-white/60 hover:border-rose"
@@ -230,32 +211,6 @@ export default function TrackPage() {
                   <span className="font-semibold text-grape">I don&apos;t like…</span>
                 </button>
               </div>
-
-              {choice === "loved" && (
-                <div className="mt-4 space-y-3">
-                  <p className="text-sm font-semibold text-grape">
-                    Yay! Where should I ship it?
-                  </p>
-                  <input value={ship.name} onChange={setShipField("name")} placeholder="Full name" className="w-full rounded-2xl border-2 border-petal/60 bg-white/70 p-3 text-plum placeholder:text-plum/40 focus:border-rose focus:outline-none" />
-                  <input value={ship.line1} onChange={setShipField("line1")} placeholder="Street address" className="w-full rounded-2xl border-2 border-petal/60 bg-white/70 p-3 text-plum placeholder:text-plum/40 focus:border-rose focus:outline-none" />
-                  <input value={ship.line2} onChange={setShipField("line2")} placeholder="Apt / unit (optional)" className="w-full rounded-2xl border-2 border-petal/60 bg-white/70 p-3 text-plum placeholder:text-plum/40 focus:border-rose focus:outline-none" />
-                  <div className="grid grid-cols-2 gap-3">
-                    <input value={ship.city} onChange={setShipField("city")} placeholder="City" className="rounded-2xl border-2 border-petal/60 bg-white/70 p-3 text-plum placeholder:text-plum/40 focus:border-rose focus:outline-none" />
-                    <input value={ship.state} onChange={setShipField("state")} placeholder="State" className="rounded-2xl border-2 border-petal/60 bg-white/70 p-3 text-plum placeholder:text-plum/40 focus:border-rose focus:outline-none" />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <input value={ship.zip} onChange={setShipField("zip")} placeholder="ZIP" className="rounded-2xl border-2 border-petal/60 bg-white/70 p-3 text-plum placeholder:text-plum/40 focus:border-rose focus:outline-none" />
-                    <input value={ship.country} onChange={setShipField("country")} placeholder="Country" className="rounded-2xl border-2 border-petal/60 bg-white/70 p-3 text-plum placeholder:text-plum/40 focus:border-rose focus:outline-none" />
-                  </div>
-                  <button
-                    onClick={() => submitReview("loved")}
-                    disabled={submitting}
-                    className="btn-primary w-full disabled:opacity-60"
-                  >
-                    {submitting ? "Sending…" : "Confirm & send shipping info"}
-                  </button>
-                </div>
-              )}
 
               {choice === "revision" && (
                 <div className="mt-4">

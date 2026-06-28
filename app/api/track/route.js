@@ -31,9 +31,9 @@ export async function GET(req) {
   return NextResponse.json(publicView(c));
 }
 
-// POST /api/track  { order, response: "loved"|"revision", notes, shipping }
+// POST /api/track  { order, response: "loved"|"revision", notes }
 export async function POST(req) {
-  const { order, response, notes, shipping } = await req.json();
+  const { order, response, notes } = await req.json();
 
   const c = await getByOrderNumber(order);
   if (!c || !c.orderNumber) {
@@ -55,41 +55,19 @@ export async function POST(req) {
     );
   }
 
-  // Validate shipping when they approve.
-  let cleanShipping = null;
-  if (response === "loved") {
-    const s = shipping || {};
-    if (!s.name?.trim() || !s.line1?.trim() || !s.city?.trim() || !s.state?.trim() || !s.zip?.trim()) {
-      return NextResponse.json(
-        { error: "Please include your full shipping address." },
-        { status: 400 }
-      );
-    }
-    const clip = (v) => String(v || "").trim().slice(0, 120);
-    cleanShipping = {
-      name: clip(s.name),
-      line1: clip(s.line1),
-      line2: clip(s.line2),
-      city: clip(s.city),
-      state: clip(s.state),
-      zip: clip(s.zip),
-      country: clip(s.country) || "United States",
-    };
-  }
-
   const review = {
     response,
     notes: (notes || "").trim().slice(0, 2000),
     at: new Date().toISOString(),
   };
-  const updated = await updateCommission(c.id, {
-    review,
-    ...(cleanShipping ? { shipping: cleanShipping } : {}),
-  });
+  const updated = await updateCommission(c.id, { review });
 
   // Let Vivian know how the customer responded.
   if (response === "loved") {
-    const addr = `${cleanShipping.name}\n${cleanShipping.line1}${cleanShipping.line2 ? ", " + cleanShipping.line2 : ""}\n${cleanShipping.city}, ${cleanShipping.state} ${cleanShipping.zip}\n${cleanShipping.country}`;
+    const s = c.shipping;
+    const addr = s
+      ? `${s.name}\n${s.line1}${s.line2 ? ", " + s.line2 : ""}\n${s.city}, ${s.state} ${s.zip}\n${s.country}`
+      : "(no address on file)";
     await sendSMS(`Order ${c.orderNumber}: ${c.name} LOVES it! 🎉 Ship to:\n${addr}`);
     await sendEmail({
       to: site.contactEmail,

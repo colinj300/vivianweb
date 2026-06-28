@@ -2,14 +2,15 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Check, Mail, MessageSquare } from "lucide-react";
+import { Check, Mail, MessageSquare, AtSign } from "lucide-react";
 
 export default function MyOrderPage() {
   const [order, setOrder] = useState("");
   const [found, setFound] = useState(null); // order summary or null
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [method, setMethod] = useState("email"); // email | text
+  const [instagram, setInstagram] = useState("");
+  const [method, setMethod] = useState("instagram"); // instagram | text | email
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -39,14 +40,15 @@ export default function MyOrderPage() {
     e.preventDefault();
     setError("");
     if (!order.trim()) return setError("Please enter your order number.");
-    if (method === "email" && !email.trim()) return setError("Please add your email.");
+    if (method === "instagram" && !instagram.trim()) return setError("Please add your Instagram handle.");
     if (method === "text" && !phone.trim()) return setError("Please add your phone number.");
+    if (method === "email" && !email.trim()) return setError("Please add your email.");
     setBusy(true);
     try {
       const res = await fetch("/api/connect", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ order, email, phone, contactMethod: method }),
+        body: JSON.stringify({ order, email, phone, instagram, contactMethod: method }),
       });
       const d = await res.json();
       if (res.ok) setDone(true);
@@ -64,9 +66,9 @@ export default function MyOrderPage() {
         <Check className="h-16 w-16 text-rose" strokeWidth={1.5} />
         <h1 className="section-title mt-6">You&apos;re all set!</h1>
         <p className="mt-4 text-plum/75">
-          Thanks! I&apos;ll send your commission updates by{" "}
-          {method === "text" ? "text" : "email"}. You can check your progress
-          anytime.
+          Thanks! Vivian will reach out by{" "}
+          {method === "text" ? "text" : method === "instagram" ? "Instagram DM" : "email"}. You
+          can check your progress anytime.
         </p>
         <Link href={`/track?order=${encodeURIComponent(order)}`} className="btn-primary mt-6">
           Track my commission
@@ -105,41 +107,20 @@ export default function MyOrderPage() {
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-semibold text-grape">Email</label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@email.com"
-            className="w-full rounded-2xl border-2 border-petal/60 bg-white/70 p-3 text-plum placeholder:text-plum/40 focus:border-rose focus:outline-none"
-          />
-        </div>
-
-        <div>
-          <label className="mb-1 block text-sm font-semibold text-grape">Phone (for texts)</label>
-          <input
-            type="tel"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            placeholder="(555) 123-4567"
-            className="w-full rounded-2xl border-2 border-petal/60 bg-white/70 p-3 text-plum placeholder:text-plum/40 focus:border-rose focus:outline-none"
-          />
-        </div>
-
-        <div>
           <label className="mb-2 block text-sm font-semibold text-grape">
-            How would you like updates?
+            How should Vivian reach you?
           </label>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-2">
             {[
-              { id: "email", label: "Email", Icon: Mail },
+              { id: "instagram", label: "Instagram", Icon: AtSign },
               { id: "text", label: "Text", Icon: MessageSquare },
+              { id: "email", label: "Email", Icon: Mail },
             ].map(({ id, label, Icon }) => (
               <button
                 type="button"
                 key={id}
                 onClick={() => setMethod(id)}
-                className={`flex items-center justify-center gap-2 rounded-2xl border-2 p-3 font-semibold transition-all ${
+                className={`flex items-center justify-center gap-1.5 rounded-2xl border-2 p-2 text-sm font-semibold transition-all ${
                   method === id
                     ? "border-rose bg-petal/60 text-grape shadow-soft"
                     : "border-petal/60 bg-white/60 text-plum/70 hover:border-bubblegum"
@@ -150,6 +131,33 @@ export default function MyOrderPage() {
             ))}
           </div>
         </div>
+
+        {method === "instagram" && (
+          <input
+            value={instagram}
+            onChange={(e) => setInstagram(e.target.value)}
+            placeholder="@yourhandle"
+            className="w-full rounded-2xl border-2 border-petal/60 bg-white/70 p-3 text-plum placeholder:text-plum/40 focus:border-rose focus:outline-none"
+          />
+        )}
+        {method === "text" && (
+          <input
+            type="tel"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            placeholder="Your phone number"
+            className="w-full rounded-2xl border-2 border-petal/60 bg-white/70 p-3 text-plum placeholder:text-plum/40 focus:border-rose focus:outline-none"
+          />
+        )}
+        {method === "email" && (
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@email.com"
+            className="w-full rounded-2xl border-2 border-petal/60 bg-white/70 p-3 text-plum placeholder:text-plum/40 focus:border-rose focus:outline-none"
+          />
+        )}
 
         {error && <p className="text-sm font-semibold text-rose">{error}</p>}
 

@@ -279,12 +279,13 @@ function CommissionCard({ c, busy, onStatus, onStage, onPrice, onLink, onDelete 
       {c.orderNumber && (
         <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-plum/70">
           <span>
-            {c.email || c.phone ? (
+            {c.instagram || c.email || c.phone ? (
               <>
-                {c.email && <>Email: {c.email}&nbsp;&nbsp;</>}
+                {c.instagram && <>IG: {c.instagram}&nbsp;&nbsp;</>}
                 {c.phone && <>Phone: {c.phone}&nbsp;&nbsp;</>}
+                {c.email && <>Email: {c.email}&nbsp;&nbsp;</>}
                 <span className="font-semibold text-grape">
-                  (prefers {c.contactMethod === "text" ? "text" : "email"})
+                  (prefers {c.contactMethod || "email"})
                 </span>
               </>
             ) : (
@@ -338,6 +339,25 @@ function CommissionCard({ c, busy, onStatus, onStage, onPrice, onLink, onDelete 
               {c.review.notes}
             </>
           )}
+        </div>
+      )}
+
+      {c.shipping && (
+        <div className="mt-3 rounded-2xl border border-bubblegum/50 bg-white/70 p-3 text-sm">
+          <p className="font-semibold text-grape">📦 Ship to:</p>
+          <p className="whitespace-pre-line text-plum/80">
+            {`${c.shipping.name}\n${c.shipping.line1}${c.shipping.line2 ? ", " + c.shipping.line2 : ""}\n${c.shipping.city}, ${c.shipping.state} ${c.shipping.zip}\n${c.shipping.country}`}
+          </p>
+          <button
+            onClick={() =>
+              navigator.clipboard?.writeText(
+                `${c.shipping.name}\n${c.shipping.line1}${c.shipping.line2 ? "\n" + c.shipping.line2 : ""}\n${c.shipping.city}, ${c.shipping.state} ${c.shipping.zip}\n${c.shipping.country}`
+              )
+            }
+            className="mt-1 rounded-full border border-bubblegum px-3 py-0.5 text-xs font-semibold text-grape hover:bg-petal"
+          >
+            Copy address
+          </button>
         </div>
       )}
 

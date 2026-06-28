@@ -19,6 +19,9 @@ export default function CommissionsPage() {
   const [request, setRequest] = useState("");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [contactMethod, setContactMethod] = useState("instagram"); // instagram | text | email
+  const [instagram, setInstagram] = useState("");
+  const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [done, setDone] = useState(null); // { waitlisted, estimate }
@@ -78,12 +81,24 @@ export default function CommissionsPage() {
     });
   }, [mediumId, sizeId, customSize, extraSubjects, backgroundId]);
 
+  const contactValue =
+    contactMethod === "instagram" ? instagram : contactMethod === "text" ? phone : email;
+
   async function submit() {
     setError("");
     if (!sizeId) return setError("Please pick a size.");
     if (isCustom && !customSize.trim()) return setError("Please enter your custom size.");
     if (!request.trim()) return setError("Tell me about your commission in the request box.");
-    if (!name.trim() || !email.trim()) return setError("Please add your name and email.");
+    if (!name.trim()) return setError("Please add your name.");
+    if (!contactValue.trim()) {
+      return setError(
+        contactMethod === "instagram"
+          ? "Please add your Instagram handle."
+          : contactMethod === "text"
+          ? "Please add your phone number."
+          : "Please add your email."
+      );
+    }
 
     setLoading(true);
     try {
@@ -93,6 +108,9 @@ export default function CommissionsPage() {
         body: JSON.stringify({
           name,
           email,
+          instagram,
+          phone,
+          contactMethod,
           mediumId,
           sizeId,
           customSize,
@@ -310,10 +328,10 @@ export default function CommissionsPage() {
 
           {/* PET PHOTOS */}
           <div className="card">
-            <h2 className="font-display text-2xl text-grape">4. Add pet photos</h2>
+            <h2 className="font-display text-2xl text-grape">4. Reference photos</h2>
             <p className="mt-1 text-sm text-plum/60">
-              Upload clear photos of your pet (or any reference images) so I can
-              capture them just right. Optional — up to 8.
+              Upload clear photos of your pet, person, or any reference/inspo
+              images so I can capture it just right. Optional — up to 8.
             </p>
             <div className="mt-4 flex flex-wrap gap-3">
               {photos.map((p) => (
@@ -439,13 +457,59 @@ export default function CommissionsPage() {
                 placeholder="Your name"
                 className="w-full rounded-2xl border-2 border-petal/60 bg-white/70 p-3 text-plum placeholder:text-plum/40 focus:border-rose focus:outline-none"
               />
-              <input
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                type="email"
-                placeholder="Your email"
-                className="w-full rounded-2xl border-2 border-petal/60 bg-white/70 p-3 text-plum placeholder:text-plum/40 focus:border-rose focus:outline-none"
-              />
+
+              <div>
+                <p className="mb-1 text-sm font-semibold text-grape">
+                  How should I reach you?
+                </p>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { id: "instagram", label: "Instagram" },
+                    { id: "text", label: "Text" },
+                    { id: "email", label: "Email" },
+                  ].map((m) => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => setContactMethod(m.id)}
+                      className={`rounded-2xl border-2 py-2 text-sm font-semibold transition-all ${
+                        contactMethod === m.id
+                          ? "border-rose bg-petal/60 text-grape shadow-soft"
+                          : "border-petal/60 bg-white/60 text-plum/70 hover:border-bubblegum"
+                      }`}
+                    >
+                      {m.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {contactMethod === "instagram" && (
+                <input
+                  value={instagram}
+                  onChange={(e) => setInstagram(e.target.value)}
+                  placeholder="@yourhandle"
+                  className="w-full rounded-2xl border-2 border-petal/60 bg-white/70 p-3 text-plum placeholder:text-plum/40 focus:border-rose focus:outline-none"
+                />
+              )}
+              {contactMethod === "text" && (
+                <input
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  type="tel"
+                  placeholder="Your phone number"
+                  className="w-full rounded-2xl border-2 border-petal/60 bg-white/70 p-3 text-plum placeholder:text-plum/40 focus:border-rose focus:outline-none"
+                />
+              )}
+              {contactMethod === "email" && (
+                <input
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  type="email"
+                  placeholder="Your email"
+                  className="w-full rounded-2xl border-2 border-petal/60 bg-white/70 p-3 text-plum placeholder:text-plum/40 focus:border-rose focus:outline-none"
+                />
+              )}
             </div>
 
             {error && <p className="mt-3 text-sm font-semibold text-rose">{error}</p>}

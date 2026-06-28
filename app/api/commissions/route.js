@@ -13,6 +13,9 @@ export async function POST(req) {
     const {
       name,
       email,
+      instagram,
+      phone,
+      contactMethod,
       mediumId,
       sizeId,
       customSize,
@@ -27,9 +30,18 @@ export async function POST(req) {
       ? images.filter((u) => typeof u === "string" && u.startsWith("http")).slice(0, 8)
       : [];
 
-    if (!name?.trim() || !email?.trim()) {
+    const method = ["instagram", "text", "email"].includes(contactMethod)
+      ? contactMethod
+      : "email";
+    const contactValue =
+      method === "instagram" ? instagram : method === "text" ? phone : email;
+
+    if (!name?.trim()) {
+      return NextResponse.json({ error: "Please add your name." }, { status: 400 });
+    }
+    if (!contactValue?.trim()) {
       return NextResponse.json(
-        { error: "Please add your name and email so we can reach you." },
+        { error: "Please add a way to reach you (Instagram, phone, or email)." },
         { status: 400 }
       );
     }
@@ -65,7 +77,10 @@ export async function POST(req) {
       id: randomUUID(),
       createdAt: new Date().toISOString(),
       name: name.trim().slice(0, 200),
-      email: email.trim().slice(0, 200),
+      email: (email || "").trim().slice(0, 200),
+      instagram: (instagram || "").trim().slice(0, 80),
+      phone: (phone || "").trim().slice(0, 40),
+      contactMethod: method,
       mediumId,
       mediumName: estimate.medium.name,
       sizeId,
@@ -96,33 +111,39 @@ export async function POST(req) {
     const priceNote = estimate.isCustom
       ? `est extras $${estimate.total} + base quoted`
       : `est $${estimate.total}`;
+    const contactLabel =
+      method === "instagram"
+        ? `Instagram ${record.instagram}`
+        : method === "text"
+        ? `Text ${record.phone}`
+        : `Email ${record.email}`;
 
     await sendSMS(
-      `New commission request${waitNote}\n${record.name} (${record.email})\n` +
+      `New commission request${waitNote}\n${record.name} — ${contactLabel}\n` +
         `${estimate.medium.name} · ${estimate.sizeLabel}${subjectsNote}${bgNote}${photoNote} — ${priceNote}\n` +
         `"${record.request.slice(0, 600)}"`
     );
 
     await sendEmail({
       to: site.contactEmail,
-      replyTo: record.email,
+      replyTo: record.email || undefined,
       subject: `Commission request from ${record.name}${open ? "" : " (WAITLIST)"}`,
       text:
-        `Name: ${record.name}\nEmail: ${record.email}\n` +
+        `Name: ${record.name}\nContact: ${contactLabel} (prefers ${method})\n` +
         `Medium: ${estimate.medium.name}\nSize: ${estimate.sizeLabel}\n` +
         `Extra subjects: ${estimate.subjects}\n` +
         `Background: ${estimate.background.name}\n` +
         `Estimate: $${estimate.total}${estimate.isCustom ? " (extras only — base quoted at review)" : ""}\n` +
         `Status: ${status}\n` +
-        (photos.length ? `\nPet photos:\n${photos.join("\n")}\n` : "") +
+        (photos.length ? `\nReference photos:\n${photos.join("\n")}\n` : "") +
         `\nRequest:\n${record.request}`,
     });
 
-    // Confirmation email to the customer.
+    // Confirmation email to the customer (only if they gave an email).
     const priceLine = estimate.isCustom
       ? "Your price will be quoted when Vivian reviews your custom size."
       : `Estimated total: $${estimate.total} (final price confirmed before any payment).`;
-    await sendEmail({
+    if (record.email) await sendEmail({
       to: record.email,
       subject: `Thanks for your commission request! — ${site.brand}`,
       text:

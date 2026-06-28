@@ -5,7 +5,7 @@ import { sendSMS } from "@/lib/notify";
 // A customer (e.g. from an Instagram DM order) submits their email/phone and
 // preferred update method, tied to their order number.
 export async function POST(req) {
-  const { order, email, phone, contactMethod } = await req.json();
+  const { order, email, phone, instagram, contactMethod } = await req.json();
 
   const c = await getByOrderNumber(order);
   if (!c || !c.orderNumber) {
@@ -15,16 +15,13 @@ export async function POST(req) {
     );
   }
 
-  const method = contactMethod === "text" ? "text" : "email";
-  if (method === "text" && !phone?.trim()) {
+  const method = ["instagram", "text", "email"].includes(contactMethod)
+    ? contactMethod
+    : "email";
+  const value = method === "instagram" ? instagram : method === "text" ? phone : email;
+  if (!value?.trim()) {
     return NextResponse.json(
-      { error: "Add a phone number to get text updates." },
-      { status: 400 }
-    );
-  }
-  if (method === "email" && !email?.trim()) {
-    return NextResponse.json(
-      { error: "Add an email to get email updates." },
+      { error: `Please add your ${method === "instagram" ? "Instagram handle" : method === "text" ? "phone number" : "email"}.` },
       { status: 400 }
     );
   }
@@ -32,6 +29,7 @@ export async function POST(req) {
   await updateCommission(c.id, {
     email: (email || "").trim().slice(0, 200),
     phone: (phone || "").trim().slice(0, 40),
+    instagram: (instagram || "").trim().slice(0, 80),
     contactMethod: method,
   });
 

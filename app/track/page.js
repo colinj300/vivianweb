@@ -157,6 +157,27 @@ export default function TrackPage() {
             })}
           </div>
 
+          {/* progress photos Vivian has shared along the way */}
+          {Array.isArray(data.progressImages) && data.progressImages.length > 0 && (
+            <div className="mt-8">
+              <p className="text-center text-sm font-semibold text-grape">
+                Progress peeks from Vivian
+              </p>
+              <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                {data.progressImages.map((p) => (
+                  <a key={p.url} href={p.url} target="_blank" rel="noreferrer" className="group">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={p.url}
+                      alt="Work-in-progress"
+                      className="aspect-square w-full rounded-2xl border-2 border-petal object-cover shadow-soft transition group-hover:opacity-90"
+                    />
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* review section */}
           {data.review ? (
             <div className="mt-8 rounded-2xl bg-lilac/50 p-5 text-center">

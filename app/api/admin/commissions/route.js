@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { maxActiveCommissions, site } from "@/lib/config";
 import { isAuthorized } from "@/lib/admin";
-import { listCommissions, updateCommission, countActive, getByOrderNumber, deleteCommission } from "@/lib/store";
+import { listCommissions, updateCommission, countActive, getByOrderNumber, deleteCommission, getCommission } from "@/lib/store";
 import { STATUSES, STAGES, genOrderNumber } from "@/lib/commissions";
 import { sendEmail, sendSMSTo } from "@/lib/notify";
 
@@ -25,11 +25,23 @@ export async function POST(req) {
   if (!isAuthorized(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const { id, status, stage, finalPrice, proofImage } = await req.json();
+  const { id, status, stage, finalPrice, proofImage, addProgressImage, removeProgressImage } =
+    await req.json();
   if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
 
   const patch = {};
   let warning;
+
+  // Add or remove a progress photo (the customer sees these on /track).
+  if (addProgressImage || removeProgressImage) {
+    const cur = await getCommission(id);
+    const arr = Array.isArray(cur?.progressImages) ? cur.progressImages : [];
+    if (addProgressImage) {
+      patch.progressImages = [...arr, { url: addProgressImage, at: new Date().toISOString() }];
+    } else {
+      patch.progressImages = arr.filter((p) => p.url !== removeProgressImage);
+    }
+  }
 
   if (status) {
     if (!STATUSES.includes(status)) {

@@ -14,6 +14,7 @@ function publicView(c) {
     sizeName: c.sizeName || "",
     name: c.name || "",
     proofImage: c.proofImage || "",
+    progressImages: Array.isArray(c.progressImages) ? c.progressImages : [],
     review: c.review || null,
   };
 }

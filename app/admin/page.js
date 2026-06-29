@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { RefreshCw, Ruler, User, Mountain, DollarSign, CreditCard, ImagePlus, Trash2 } from "lucide-react";
+import { RefreshCw, Ruler, User, Mountain, DollarSign, CreditCard, ImagePlus, Trash2, X } from "lucide-react";
 import { STATUSES, STATUS_LABELS, STAGES, STAGE_LABELS } from "@/lib/commissions";
 import { aceoPrice, mediums, backgrounds } from "@/lib/config";
 import { compressImage } from "@/lib/compressImage";
@@ -79,6 +79,8 @@ export default function AdminPage() {
 
   const updateStatus = (id, status) => post({ id, status });
   const setPrice = (id, finalPrice) => post({ id, finalPrice });
+  const addProgress = (id, url) => post({ id, addProgressImage: url });
+  const removeProgress = (id, url) => post({ id, removeProgressImage: url });
   async function updateStage(id, stage, proofImage) {
     const d = await post({ id, stage, proofImage });
     if (stage === "ready_for_review") {
@@ -211,6 +213,8 @@ export default function AdminPage() {
             onPrice={setPrice}
             onLink={makeLink}
             onDelete={removeCommission}
+            onAddProgress={addProgress}
+            onRemoveProgress={removeProgress}
           />
         ))}
       </div>
@@ -220,13 +224,34 @@ export default function AdminPage() {
   );
 }
 
-function CommissionCard({ c, busy, onStatus, onStage, onPrice, onLink, onDelete }) {
+function CommissionCard({ c, busy, onStatus, onStage, onPrice, onLink, onDelete, onAddProgress, onRemoveProgress }) {
   const [price, setPriceInput] = useState(c.finalPrice ?? c.estimate ?? "");
   const [emailCustomer, setEmailCustomer] = useState(true);
   const [proofUrl, setProofUrl] = useState(c.proofImage || "");
   const [proofBusy, setProofBusy] = useState(false);
   const proofRef = useRef(null);
+  const [progressBusy, setProgressBusy] = useState(false);
+  const progressRef = useRef(null);
   const color = STATUS_COLOR[c.status] || STATUS_COLOR.pending;
+
+  async function uploadProgress(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setProgressBusy(true);
+    try {
+      const compressed = await compressImage(file);
+      const fd = new FormData();
+      fd.append("file", compressed);
+      const res = await fetch("/api/upload", { method: "POST", body: fd });
+      const d = await res.json().catch(() => ({}));
+      if (res.ok && d.url) onAddProgress(c.id, d.url);
+      else alert(d.error || "Upload failed.");
+    } catch {
+      alert("Upload failed. Please try again.");
+    }
+    setProgressBusy(false);
+    if (progressRef.current) progressRef.current.value = "";
+  }
 
   async function uploadProof(e) {
     const file = e.target.files?.[0];
@@ -443,6 +468,61 @@ function CommissionCard({ c, busy, onStatus, onStage, onPrice, onLink, onDelete 
               </button>
               {!c.email && <span className="text-xs text-rose">no email on file</span>}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* progress photos the customer can see on /track */}
+      {c.orderNumber && (
+        <div className="mt-2 rounded-2xl border border-petal/60 bg-white/60 p-3">
+          <p className="text-xs font-semibold text-grape">
+            Progress photos (the customer sees these when they track their order):
+          </p>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            {Array.isArray(c.progressImages) &&
+              c.progressImages.map((p) => (
+                <div key={p.url} className="relative">
+                  <a href={p.url} target="_blank" rel="noreferrer">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={p.url}
+                      alt="progress"
+                      className="h-16 w-16 rounded-xl border border-petal object-cover hover:opacity-80"
+                    />
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => onRemoveProgress(c.id, p.url)}
+                    disabled={busy}
+                    className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-rose text-white shadow hover:bg-rose/80 disabled:opacity-40"
+                    aria-label="Remove progress photo"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+            <button
+              type="button"
+              onClick={() => progressRef.current?.click()}
+              disabled={progressBusy}
+              className="flex h-16 w-16 flex-col items-center justify-center gap-0.5 rounded-xl border-2 border-dashed border-bubblegum text-[10px] font-semibold text-grape hover:bg-petal disabled:opacity-60"
+            >
+              {progressBusy ? (
+                "…"
+              ) : (
+                <>
+                  <ImagePlus className="h-4 w-4" />
+                  Add
+                </>
+              )}
+            </button>
+            <input
+              ref={progressRef}
+              type="file"
+              accept="image/*"
+              onChange={uploadProgress}
+              className="hidden"
+            />
           </div>
         </div>
       )}

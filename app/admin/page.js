@@ -64,8 +64,17 @@ export default function AdminPage() {
           ? `✓ Test text sent to your phone${d.to ? ` (${d.to})` : ""}. If it doesn't arrive, double-check OWNER_PHONE and your Twilio number.`
           : `✓ Test email sent to ${d.to}. Check your inbox (and spam) — if it's there, your receipts, confirmations, and review notices all work.`
       );
+    } else if (channel === "email") {
+      const detail = d.error || "Unknown error.";
+      const fromOnboarding = (d.from || "").includes("resend.dev");
+      setTestMsg(
+        `✗ Resend rejected the send (from ${d.from || "?"} → ${d.to}):\n"${detail}"` +
+          (fromOnboarding
+            ? `\n\nMost likely fix: you're sending from Resend's shared "onboarding@resend.dev", which can only email the address you signed up to Resend with. Verify your own domain (or sender) in Resend, then set a CONTACT_FROM env var like "Vivian <hello@yourdomain.com>" and redeploy.`
+            : "")
+      );
     } else {
-      setTestMsg("The provider returned an error — check that your keys are correct.");
+      setTestMsg(`✗ ${d.error || "The provider returned an error — check that your keys are correct."}`);
     }
   }
 
@@ -293,7 +302,9 @@ export default function AdminPage() {
               )}
             </div>
             {testMsg && (
-              <p className="rounded-xl bg-lilac/40 p-3 text-sm text-plum/80">{testMsg}</p>
+              <p className="whitespace-pre-line rounded-xl bg-lilac/40 p-3 text-sm text-plum/80">
+                {testMsg}
+              </p>
             )}
           </div>
         )}

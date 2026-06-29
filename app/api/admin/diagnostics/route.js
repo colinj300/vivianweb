@@ -51,6 +51,8 @@ export async function POST(req) {
     ok: r.ok,
     skipped: !!r.skipped,
     to: site.contactEmail,
+    from: integrationStatus().emailFrom,
+    error: r.error || "",
     channel: "email",
   });
 }

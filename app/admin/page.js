@@ -22,6 +22,9 @@ export default function AdminPage() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [view, setView] = useState("commissions"); // commissions | aceos
+  const [diag, setDiag] = useState(null);
+  const [testMsg, setTestMsg] = useState("");
+  const [showStatus, setShowStatus] = useState(false);
 
   // The session cookie is sent automatically — no password handling here.
   const load = useCallback(async () => {
@@ -35,10 +38,45 @@ export default function AdminPage() {
     return true;
   }, []);
 
+  const loadDiag = useCallback(async () => {
+    const res = await fetch("/api/admin/diagnostics", { cache: "no-store" });
+    if (res.ok) setDiag(await res.json());
+  }, []);
+
+  async function sendTest(channel) {
+    setTestMsg("Sending…");
+    const res = await fetch("/api/admin/diagnostics", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ channel }),
+    });
+    const d = await res.json().catch(() => ({}));
+    if (!res.ok) return setTestMsg("Couldn't send the test — try again.");
+    if (d.skipped) {
+      setTestMsg(
+        channel === "text"
+          ? "Texting isn't switched on yet (Twilio). Nothing was sent — add the Twilio keys to enable it."
+          : "Email isn't switched on yet (Resend). Nothing was sent — add RESEND_API_KEY to enable it."
+      );
+    } else if (d.ok) {
+      setTestMsg(
+        channel === "text"
+          ? `✓ Test text sent to your phone${d.to ? ` (${d.to})` : ""}. If it doesn't arrive, double-check OWNER_PHONE and your Twilio number.`
+          : `✓ Test email sent to ${d.to}. Check your inbox (and spam) — if it's there, your receipts, confirmations, and review notices all work.`
+      );
+    } else {
+      setTestMsg("The provider returned an error — check that your keys are correct.");
+    }
+  }
+
   // On open, check whether we already have a valid session.
   useEffect(() => {
-    load().finally(() => setChecking(false));
-  }, [load]);
+    load()
+      .then((ok) => {
+        if (ok) loadDiag();
+      })
+      .finally(() => setChecking(false));
+  }, [load, loadDiag]);
 
   async function login(e) {
     e.preventDefault();
@@ -51,6 +89,7 @@ export default function AdminPage() {
     if (res.ok) {
       setPw("");
       await load();
+      loadDiag();
     } else {
       const d = await res.json().catch(() => ({}));
       setError(d.error || "Could not log in.");
@@ -83,15 +122,35 @@ export default function AdminPage() {
   const removeProgress = (id, url) => post({ id, removeProgressImage: url });
   async function updateStage(id, stage, proofImage) {
     const d = await post({ id, stage, proofImage });
-    if (stage === "ready_for_review") {
-      alert(
-        d?.emailed
-          ? `Sent! The customer was notified by ${d.channel === "text" ? "text" : "email"} with the photo and a review link.`
-          : "Marked ready for review. (No message sent — they may have no contact info on file, or Resend/Twilio isn't set up.)"
-      );
-    } else if (stage === "in_progress" && d?.emailed) {
-      alert(`"In progress" update sent to the customer by ${d.channel === "text" ? "text" : "email"}.`);
+    if (stage !== "ready_for_review" && stage !== "in_progress") return;
+
+    const sent = d?.sent || {};
+    const channels = [];
+    if (sent.email) channels.push("email");
+    if (sent.text) channels.push("text");
+    const what = stage === "ready_for_review" ? "review link" : '"in progress" update';
+
+    let msg = channels.length
+      ? `Sent the ${what} by ${channels.join(" + ")}.`
+      : `Marked ${stage === "ready_for_review" ? "ready for review" : "in progress"}.`;
+
+    if (d?.manual) {
+      const where =
+        d.manual.platform === "instagram"
+          ? `Instagram ${d.manual.handle || "(no handle on file)"}`
+          : d.manual.platform === "text"
+          ? `text ${d.manual.handle || "(no number on file)"}`
+          : d.manual.platform;
+      msg +=
+        `\n\n⚠ They chose ${where} as their contact, which can't be sent automatically.\n` +
+        `Please send them this link yourself:\n${d.manual.url}\n\n` +
+        `(It's also saved on this order's card with a Copy button.)`;
+    } else if (!channels.length) {
+      msg +=
+        `\n\n(No message went out — they may have no contact info on file, or ` +
+        `Resend/Twilio isn't set up yet. The review link is on the card to send manually.)`;
     }
+    alert(msg);
   }
 
   async function removeCommission(id) {
@@ -176,6 +235,70 @@ export default function AdminPage() {
       <>
       <h1 className="sr-only">Commissions</h1>
 
+      {/* notifications & system status */}
+      <div className="card mt-6">
+        <button
+          onClick={() => {
+            setShowStatus((v) => !v);
+            if (!diag) loadDiag();
+          }}
+          className="flex w-full items-center justify-between text-left"
+        >
+          <span className="font-bold text-grape">Notifications &amp; system status</span>
+          <span className="text-sm font-semibold text-plum/60">
+            {showStatus ? "Hide" : "Check"}
+          </span>
+        </button>
+        {showStatus && (
+          <div className="mt-4 space-y-4">
+            <div className="grid gap-2 sm:grid-cols-2">
+              {[
+                ["Email (receipts, confirmations, review notices)", diag?.email],
+                ["Customer texting", diag?.text],
+                ["Card payments", diag?.payments],
+                ["Image uploads", diag?.uploads],
+                ["Saved order data (survives redeploys)", diag?.storage],
+              ].map(([label, on]) => (
+                <div
+                  key={label}
+                  className="flex items-center gap-2 rounded-xl bg-blush/50 px-3 py-2 text-sm"
+                >
+                  <span
+                    className={`h-2.5 w-2.5 shrink-0 rounded-full ${
+                      on ? "bg-green-500" : "bg-plum/25"
+                    }`}
+                  />
+                  <span className="text-plum/80">{label}</span>
+                  <span
+                    className={`ml-auto shrink-0 text-xs font-semibold ${
+                      on ? "text-green-600" : "text-plum/40"
+                    }`}
+                  >
+                    {on ? "on" : "not set up"}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button onClick={() => sendTest("email")} disabled={busy} className="btn-secondary !py-2 text-sm">
+                Send test email
+              </button>
+              <button onClick={() => sendTest("text")} disabled={busy} className="btn-secondary !py-2 text-sm">
+                Send test text
+              </button>
+              {diag?.contactEmail && (
+                <span className="text-xs text-plum/50">
+                  Email tests go to {diag.contactEmail}; texts go to your phone.
+                </span>
+              )}
+            </div>
+            {testMsg && (
+              <p className="rounded-xl bg-lilac/40 p-3 text-sm text-plum/80">{testMsg}</p>
+            )}
+          </div>
+        )}
+      </div>
+
       {/* slot summary */}
       <div className="mt-6 grid gap-4 sm:grid-cols-3">
         <div className="card text-center">
@@ -232,7 +355,13 @@ function CommissionCard({ c, busy, onStatus, onStage, onPrice, onLink, onDelete,
   const proofRef = useRef(null);
   const [progressBusy, setProgressBusy] = useState(false);
   const progressRef = useRef(null);
+  const [origin, setOrigin] = useState("");
+  const [linkCopied, setLinkCopied] = useState(false);
   const color = STATUS_COLOR[c.status] || STATUS_COLOR.pending;
+
+  useEffect(() => setOrigin(window.location.origin), []);
+  const reviewUrl = c.orderNumber ? `${origin}/track?order=${c.orderNumber}` : "";
+  const pref = c.contactMethod || "email";
 
   async function uploadProgress(e) {
     const file = e.target.files?.[0];
@@ -290,6 +419,17 @@ function CommissionCard({ c, busy, onStatus, onStage, onPrice, onLink, onDelete,
           </span>
           {c.orderNumber && (
             <p className="mt-1 font-mono text-sm font-bold text-grape">{c.orderNumber}</p>
+          )}
+          {c.review && (
+            <p
+              className={`mt-1 inline-block rounded-full px-2 py-0.5 text-xs font-bold ${
+                c.review.response === "loved"
+                  ? "bg-grape/15 text-grape"
+                  : "bg-rose/15 text-rose"
+              }`}
+            >
+              {c.review.response === "loved" ? "♥ Customer approved" : "Revision requested"}
+            </p>
           )}
         </div>
       </div>
@@ -464,9 +604,14 @@ function CommissionCard({ c, busy, onStatus, onStage, onPrice, onLink, onDelete,
                 onClick={() => onStage(c.id, "ready_for_review", proofUrl)}
                 className="btn-primary !py-2 text-sm disabled:opacity-50"
               >
-                {c.stage === "ready_for_review" ? "Resend review email" : "Send for review & email customer"}
+                {c.stage === "ready_for_review" ? "Resend review notice" : "Send for review & notify"}
               </button>
-              {!c.email && <span className="text-xs text-rose">no email on file</span>}
+              {pref === "instagram" && (
+                <span className="text-xs text-rose">prefers Instagram — you&apos;ll get the link to DM</span>
+              )}
+              {pref !== "instagram" && !c.email && pref !== "text" && (
+                <span className="text-xs text-rose">no email on file</span>
+              )}
             </div>
           </div>
         </div>
@@ -524,6 +669,49 @@ function CommissionCard({ c, busy, onStatus, onStage, onPrice, onLink, onDelete,
               className="hidden"
             />
           </div>
+        </div>
+      )}
+
+      {/* shareable status/review link — esp. for non-email customers */}
+      {c.orderNumber && (
+        <div className="mt-2 rounded-2xl border border-bubblegum/60 bg-lilac/30 p-3">
+          <p className="text-xs font-semibold text-grape">
+            Status &amp; review link (send this to the customer so they can track and approve):
+          </p>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <input
+              readOnly
+              value={reviewUrl}
+              onFocus={(e) => e.target.select()}
+              className="min-w-0 flex-1 rounded-xl border border-petal/60 bg-white/80 px-3 py-1.5 text-xs text-plum"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                navigator.clipboard?.writeText(reviewUrl);
+                setLinkCopied(true);
+                setTimeout(() => setLinkCopied(false), 1500);
+              }}
+              className="rounded-full border border-bubblegum px-3 py-1 text-xs font-semibold text-grape hover:bg-petal"
+            >
+              {linkCopied ? "Copied!" : "Copy link"}
+            </button>
+          </div>
+          <p className="mt-1.5 text-xs text-plum/60">
+            {pref === "instagram" ? (
+              <>
+                They prefer <b>Instagram</b> {c.instagram || ""} — auto-send isn&apos;t possible,
+                so DM them this link when their piece is in progress / ready.
+              </>
+            ) : pref === "text" ? (
+              <>
+                They prefer <b>text</b> {c.phone || ""} — they&apos;ll be texted automatically
+                (if Twilio is on){c.email ? " and emailed a copy" : ""}. Copy here to send it yourself too.
+              </>
+            ) : (
+              <>They&apos;ll get this link by <b>email</b> automatically when you mark in progress / ready for review.</>
+            )}
+          </p>
         </div>
       )}
 

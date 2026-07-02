@@ -16,6 +16,10 @@ function publicView(c) {
     proofImage: c.proofImage || "",
     progressImages: Array.isArray(c.progressImages) ? c.progressImages : [],
     review: c.review || null,
+    canReview: c.review?.response === "loved" || c.status === "completed",
+    testimonial: c.testimonial
+      ? { rating: c.testimonial.rating, text: c.testimonial.text }
+      : null,
   };
 }
 

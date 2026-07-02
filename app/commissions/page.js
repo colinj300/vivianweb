@@ -3,7 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Minus, Plus, Heart, Mail, ClipboardList, ImagePlus, X } from "lucide-react";
-import { mediums, pricing, backgrounds } from "@/lib/config";
+import { site, mediums, pricing, backgrounds } from "@/lib/config";
 import { computeEstimate } from "@/lib/pricing";
 import { compressImage } from "@/lib/compressImage";
 
@@ -19,9 +19,8 @@ export default function CommissionsPage() {
   const [request, setRequest] = useState("");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [contactMethod, setContactMethod] = useState("instagram"); // instagram | text | email
+  const [contactMethod, setContactMethod] = useState("instagram"); // instagram | email
   const [instagram, setInstagram] = useState("");
-  const [phone, setPhone] = useState("");
   const [ship, setShip] = useState({
     line1: "",
     line2: "",
@@ -91,8 +90,7 @@ export default function CommissionsPage() {
     });
   }, [mediumId, sizeId, customSize, extraSubjects, backgroundId, ship.country]);
 
-  const contactValue =
-    contactMethod === "instagram" ? instagram : contactMethod === "text" ? phone : email;
+  const contactValue = contactMethod === "instagram" ? instagram : email;
 
   async function submit() {
     setError("");
@@ -104,8 +102,6 @@ export default function CommissionsPage() {
       return setError(
         contactMethod === "instagram"
           ? "Please add your Instagram handle."
-          : contactMethod === "text"
-          ? "Please add your phone number."
           : "Please add your email."
       );
     }
@@ -122,7 +118,6 @@ export default function CommissionsPage() {
           name,
           email,
           instagram,
-          phone,
           contactMethod,
           shipping: ship,
           mediumId,
@@ -497,10 +492,9 @@ export default function CommissionsPage() {
                 <p className="mb-1 text-sm font-semibold text-grape">
                   How should I reach you?
                 </p>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 gap-2">
                   {[
                     { id: "instagram", label: "Instagram" },
-                    { id: "text", label: "Text" },
                     { id: "email", label: "Email" },
                   ].map((m) => (
                     <button
@@ -527,15 +521,6 @@ export default function CommissionsPage() {
                   className="w-full rounded-2xl border-2 border-petal/60 bg-white/70 p-3 text-plum placeholder:text-plum/40 focus:border-rose focus:outline-none"
                 />
               )}
-              {contactMethod === "text" && (
-                <input
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  type="tel"
-                  placeholder="Your phone number"
-                  className="w-full rounded-2xl border-2 border-petal/60 bg-white/70 p-3 text-plum placeholder:text-plum/40 focus:border-rose focus:outline-none"
-                />
-              )}
               {contactMethod === "email" && (
                 <input
                   value={email}
@@ -545,6 +530,19 @@ export default function CommissionsPage() {
                   className="w-full rounded-2xl border-2 border-petal/60 bg-white/70 p-3 text-plum placeholder:text-plum/40 focus:border-rose focus:outline-none"
                 />
               )}
+              <p className="text-xs text-plum/60">
+                P.S. Follow{" "}
+                <a
+                  href={site.socials.instagram}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-semibold text-rose underline"
+                >
+                  @__vivian__n
+                </a>{" "}
+                on Instagram — DMs are the easiest way for me to chat with you
+                about your commission!
+              </p>
             </div>
 
             {error && <p className="mt-3 text-sm font-semibold text-rose">{error}</p>}

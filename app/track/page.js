@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Heart, ThumbsDown, Check, Search, PartyPopper } from "lucide-react";
+import { Heart, ThumbsDown, Check, Search, PartyPopper, Star } from "lucide-react";
 import { STAGES, STAGE_LABELS } from "@/lib/commissions";
 
 export default function TrackPage() {
@@ -14,6 +14,12 @@ export default function TrackPage() {
   const [choice, setChoice] = useState(null); // "loved" | "revision"
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  // public review (stars + words) UI
+  const [stars, setStars] = useState(0);
+  const [reviewText, setReviewText] = useState("");
+  const [reviewBusy, setReviewBusy] = useState(false);
+  const [reviewError, setReviewError] = useState("");
 
   const doLookup = useCallback(async (value) => {
     setError("");
@@ -75,6 +81,30 @@ export default function TrackPage() {
       setError("Something went wrong. Please try again.");
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function submitPublicReview() {
+    setReviewError("");
+    if (!stars) return setReviewError("Please pick a star rating.");
+    if (!reviewText.trim()) return setReviewError("Please write a few words!");
+    setReviewBusy(true);
+    try {
+      const res = await fetch("/api/reviews", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ order: data.orderNumber, rating: stars, text: reviewText }),
+      });
+      const d = await res.json();
+      if (res.ok) {
+        setData({ ...data, testimonial: d.testimonial });
+      } else {
+        setReviewError(d.error || "Something went wrong.");
+      }
+    } catch {
+      setReviewError("Something went wrong. Please try again.");
+    } finally {
+      setReviewBusy(false);
     }
   }
 
@@ -261,6 +291,92 @@ export default function TrackPage() {
                 ? "Your spot is locked in — Vivian will start soon!"
                 : "Vivian is working on your piece. Check back for updates!"}
             </p>
+          )}
+
+          {/* leave a public review (once they've approved their piece) */}
+          {data.canReview && (
+            <div className="mt-8 rounded-2xl border-2 border-petal/60 bg-white/60 p-5">
+              {data.testimonial ? (
+                <div className="text-center">
+                  <div className="flex justify-center gap-1">
+                    {[1, 2, 3, 4, 5].map((n) => (
+                      <Star
+                        key={n}
+                        className={`h-6 w-6 ${
+                          n <= data.testimonial.rating
+                            ? "fill-rose text-rose"
+                            : "text-petal"
+                        }`}
+                        strokeWidth={1.5}
+                      />
+                    ))}
+                  </div>
+                  <p className="mt-2 font-semibold text-grape">
+                    Thank you for your review!
+                  </p>
+                  <p className="mt-1 rounded-xl bg-lilac/40 p-3 text-sm text-plum/80">
+                    “{data.testimonial.text}”
+                  </p>
+                  <p className="mt-2 text-xs text-plum/50">
+                    It&apos;s live on the reviews page.{" "}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setStars(data.testimonial.rating);
+                        setReviewText(data.testimonial.text);
+                        setData({ ...data, testimonial: null });
+                      }}
+                      className="font-semibold text-rose underline"
+                    >
+                      Edit my review
+                    </button>
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <p className="text-center font-semibold text-grape">
+                    Enjoyed your commission? Leave a review! ♥
+                  </p>
+                  <div className="mt-3 flex justify-center gap-1.5">
+                    {[1, 2, 3, 4, 5].map((n) => (
+                      <button
+                        key={n}
+                        type="button"
+                        onClick={() => setStars(n)}
+                        aria-label={`${n} star${n > 1 ? "s" : ""}`}
+                        className="transition-transform hover:scale-110"
+                      >
+                        <Star
+                          className={`h-8 w-8 ${
+                            n <= stars ? "fill-rose text-rose" : "text-petal"
+                          }`}
+                          strokeWidth={1.5}
+                        />
+                      </button>
+                    ))}
+                  </div>
+                  <textarea
+                    value={reviewText}
+                    onChange={(e) => setReviewText(e.target.value)}
+                    rows={3}
+                    placeholder="How was your experience? Others will see this on the reviews page!"
+                    className="mt-3 w-full rounded-2xl border-2 border-petal/60 bg-white/70 p-3 text-plum placeholder:text-plum/40 focus:border-rose focus:outline-none"
+                  />
+                  {reviewError && (
+                    <p className="mt-2 text-center text-sm font-semibold text-rose">
+                      {reviewError}
+                    </p>
+                  )}
+                  <button
+                    onClick={submitPublicReview}
+                    disabled={reviewBusy}
+                    className="btn-primary mt-3 w-full disabled:opacity-60"
+                  >
+                    {reviewBusy ? "Posting…" : "Post my review"}
+                  </button>
+                </>
+              )}
+            </div>
           )}
         </div>
       )}

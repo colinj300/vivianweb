@@ -2,15 +2,15 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Check, Mail, MessageSquare, AtSign } from "lucide-react";
+import { Check, Mail, AtSign } from "lucide-react";
+import { site } from "@/lib/config";
 
 export default function MyOrderPage() {
   const [order, setOrder] = useState("");
   const [found, setFound] = useState(null); // order summary or null
   const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
   const [instagram, setInstagram] = useState("");
-  const [method, setMethod] = useState("instagram"); // instagram | text | email
+  const [method, setMethod] = useState("instagram"); // instagram | email
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -41,14 +41,13 @@ export default function MyOrderPage() {
     setError("");
     if (!order.trim()) return setError("Please enter your order number.");
     if (method === "instagram" && !instagram.trim()) return setError("Please add your Instagram handle.");
-    if (method === "text" && !phone.trim()) return setError("Please add your phone number.");
     if (method === "email" && !email.trim()) return setError("Please add your email.");
     setBusy(true);
     try {
       const res = await fetch("/api/connect", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ order, email, phone, instagram, contactMethod: method }),
+        body: JSON.stringify({ order, email, instagram, contactMethod: method }),
       });
       const d = await res.json();
       if (res.ok) setDone(true);
@@ -67,8 +66,8 @@ export default function MyOrderPage() {
         <h1 className="section-title mt-6">You&apos;re all set!</h1>
         <p className="mt-4 text-plum/75">
           Thanks! Vivian will reach out by{" "}
-          {method === "text" ? "text" : method === "instagram" ? "Instagram DM" : "email"}. You
-          can check your progress anytime.
+          {method === "instagram" ? "Instagram DM" : "email"}. You can check
+          your progress anytime.
         </p>
         <Link href={`/track?order=${encodeURIComponent(order)}`} className="btn-primary mt-6">
           Track my commission
@@ -110,10 +109,9 @@ export default function MyOrderPage() {
           <label className="mb-2 block text-sm font-semibold text-grape">
             How should Vivian reach you?
           </label>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             {[
               { id: "instagram", label: "Instagram", Icon: AtSign },
-              { id: "text", label: "Text", Icon: MessageSquare },
               { id: "email", label: "Email", Icon: Mail },
             ].map(({ id, label, Icon }) => (
               <button
@@ -140,15 +138,6 @@ export default function MyOrderPage() {
             className="w-full rounded-2xl border-2 border-petal/60 bg-white/70 p-3 text-plum placeholder:text-plum/40 focus:border-rose focus:outline-none"
           />
         )}
-        {method === "text" && (
-          <input
-            type="tel"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            placeholder="Your phone number"
-            className="w-full rounded-2xl border-2 border-petal/60 bg-white/70 p-3 text-plum placeholder:text-plum/40 focus:border-rose focus:outline-none"
-          />
-        )}
         {method === "email" && (
           <input
             type="email"
@@ -158,6 +147,20 @@ export default function MyOrderPage() {
             className="w-full rounded-2xl border-2 border-petal/60 bg-white/70 p-3 text-plum placeholder:text-plum/40 focus:border-rose focus:outline-none"
           />
         )}
+
+        <p className="text-xs text-plum/60">
+          P.S. Follow{" "}
+          <a
+            href={site.socials.instagram}
+            target="_blank"
+            rel="noreferrer"
+            className="font-semibold text-rose underline"
+          >
+            @__vivian__n
+          </a>{" "}
+          on Instagram — DMs are the easiest way for Vivian to chat with you
+          about your commission!
+        </p>
 
         {error && <p className="text-sm font-semibold text-rose">{error}</p>}
 

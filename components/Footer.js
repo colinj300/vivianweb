@@ -19,6 +19,7 @@ export default function Footer() {
         <div className="mt-6 flex flex-wrap justify-center gap-4 text-sm text-plum/60">
           <Link href="/gallery" className="hover:text-rose">Gallery</Link>
           <Link href="/commissions" className="hover:text-rose">Commissions</Link>
+          <Link href="/reviews" className="hover:text-rose">Reviews</Link>
           <Link href="/about" className="hover:text-rose">About</Link>
           <Link href="/contact" className="hover:text-rose">Contact</Link>
         </div>

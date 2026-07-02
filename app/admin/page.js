@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { RefreshCw, Ruler, User, Mountain, DollarSign, CreditCard, ImagePlus, Trash2, X } from "lucide-react";
+import { RefreshCw, Ruler, User, Mountain, DollarSign, CreditCard, ImagePlus, Trash2, X, Star } from "lucide-react";
 import { STATUSES, STATUS_LABELS, STAGES, STAGE_LABELS } from "@/lib/commissions";
 import { aceoPrice, mediums, backgrounds } from "@/lib/config";
 import { compressImage } from "@/lib/compressImage";
@@ -129,6 +129,12 @@ export default function AdminPage() {
   const setPrice = (id, finalPrice) => post({ id, finalPrice });
   const addProgress = (id, url) => post({ id, addProgressImage: url });
   const removeProgress = (id, url) => post({ id, removeProgressImage: url });
+  const hideReview = (id, hidden) => post({ id, hideTestimonial: hidden });
+  const removeReview = (id) => {
+    if (confirm("Remove this customer review completely? This can't be undone.")) {
+      post({ id, removeTestimonial: true });
+    }
+  };
   async function updateStage(id, stage, proofImage) {
     const d = await post({ id, stage, proofImage });
     if (stage !== "ready_for_review" && stage !== "in_progress") return;
@@ -349,6 +355,8 @@ export default function AdminPage() {
             onDelete={removeCommission}
             onAddProgress={addProgress}
             onRemoveProgress={removeProgress}
+            onHideReview={hideReview}
+            onRemoveReview={removeReview}
           />
         ))}
       </div>
@@ -358,7 +366,7 @@ export default function AdminPage() {
   );
 }
 
-function CommissionCard({ c, busy, onStatus, onStage, onPrice, onLink, onDelete, onAddProgress, onRemoveProgress }) {
+function CommissionCard({ c, busy, onStatus, onStage, onPrice, onLink, onDelete, onAddProgress, onRemoveProgress, onHideReview, onRemoveReview }) {
   const [price, setPriceInput] = useState(c.finalPrice ?? c.estimate ?? "");
   const [emailCustomer, setEmailCustomer] = useState(true);
   const [proofUrl, setProofUrl] = useState(c.proofImage || "");
@@ -515,6 +523,45 @@ function CommissionCard({ c, busy, onStatus, onStage, onPrice, onLink, onDelete,
               {c.review.notes}
             </>
           )}
+        </div>
+      )}
+
+      {/* public review the customer left (shown on /reviews) */}
+      {c.testimonial && (
+        <div className="mt-3 rounded-2xl border border-petal/60 bg-white/70 p-3 text-sm">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="flex gap-0.5">
+              {[1, 2, 3, 4, 5].map((n) => (
+                <Star
+                  key={n}
+                  className={`h-4 w-4 ${
+                    n <= c.testimonial.rating ? "fill-rose text-rose" : "text-petal"
+                  }`}
+                  strokeWidth={1.5}
+                />
+              ))}
+            </span>
+            <span className="text-xs font-semibold text-plum/50">
+              Public review {c.testimonial.hidden ? "(hidden from site)" : "(live on /reviews)"}
+            </span>
+            <span className="ml-auto flex gap-2">
+              <button
+                disabled={busy}
+                onClick={() => onHideReview(c.id, !c.testimonial.hidden)}
+                className="rounded-full border border-bubblegum px-2 py-0.5 text-xs font-semibold text-grape hover:bg-petal disabled:opacity-40"
+              >
+                {c.testimonial.hidden ? "Show on site" : "Hide from site"}
+              </button>
+              <button
+                disabled={busy}
+                onClick={() => onRemoveReview(c.id)}
+                className="rounded-full border border-rose/50 px-2 py-0.5 text-xs font-semibold text-rose hover:bg-rose/10 disabled:opacity-40"
+              >
+                Remove
+              </button>
+            </span>
+          </div>
+          <p className="mt-2 text-plum/80">“{c.testimonial.text}”</p>
         </div>
       )}
 

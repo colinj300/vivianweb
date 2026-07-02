@@ -25,12 +25,31 @@ export async function POST(req) {
   if (!isAuthorized(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const { id, status, stage, finalPrice, proofImage, addProgressImage, removeProgressImage } =
-    await req.json();
+  const {
+    id,
+    status,
+    stage,
+    finalPrice,
+    proofImage,
+    addProgressImage,
+    removeProgressImage,
+    hideTestimonial,
+    removeTestimonial,
+  } = await req.json();
   if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
 
   const patch = {};
   let warning;
+
+  // Hide (or un-hide) / remove the customer's public review.
+  if (removeTestimonial) {
+    patch.testimonial = null;
+  } else if (typeof hideTestimonial === "boolean") {
+    const cur = await getCommission(id);
+    if (cur?.testimonial) {
+      patch.testimonial = { ...cur.testimonial, hidden: hideTestimonial };
+    }
+  }
 
   // Add or remove a progress photo (the customer sees these on /track).
   if (addProgressImage || removeProgressImage) {

@@ -222,6 +222,7 @@ export default function AdminPage() {
             ["commissions", "Commissions"],
             ["aceos", "ACEO Shop"],
             ["reviews", "Reviews"],
+            ["money", "Money"],
           ].map(([v, label]) => (
             <button
               key={v}
@@ -248,6 +249,7 @@ export default function AdminPage() {
 
       {view === "aceos" && <AceoManager />}
       {view === "reviews" && <ReviewsManager />}
+      {view === "money" && <MoneyManager />}
       {view === "commissions" && (
       <>
       <h1 className="sr-only">Commissions</h1>
@@ -821,6 +823,213 @@ function CommissionCard({ c, busy, onStatus, onStage, onPrice, onLink, onDelete,
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+// Profit & expense tracker. Commission + ACEO income is pulled in
+// automatically; Vivian adds everything else (supplies, other income) here.
+function MoneyManager() {
+  const [data, setData] = useState(null); // { entries, totals }
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  // add-entry form
+  const [type, setType] = useState("expense");
+  const [label, setLabel] = useState("");
+  const [amount, setAmount] = useState("");
+  const [date, setDate] = useState("");
+
+  const load = useCallback(async () => {
+    const res = await fetch("/api/admin/finance", { cache: "no-store" });
+    if (res.ok) setData(await res.json());
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const fmt = (n) => {
+    const v = Math.round(n * 100) / 100;
+    const abs = Math.abs(v);
+    const s = abs % 1 === 0 ? `$${abs}` : `$${abs.toFixed(2)}`;
+    return v < 0 ? `−${s}` : s;
+  };
+
+  async function addEntry(e) {
+    e.preventDefault();
+    setError("");
+    setBusy(true);
+    const res = await fetch("/api/admin/finance", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type, label, amount, at: date || undefined }),
+    });
+    const d = await res.json().catch(() => ({}));
+    if (res.ok) {
+      setData(d);
+      setLabel("");
+      setAmount("");
+      setDate("");
+    } else {
+      setError(d.error || "Couldn't add that entry.");
+    }
+    setBusy(false);
+  }
+
+  async function removeEntry(id) {
+    if (!confirm("Remove this entry?")) return;
+    setBusy(true);
+    const res = await fetch(`/api/admin/finance?id=${encodeURIComponent(id)}`, {
+      method: "DELETE",
+    });
+    if (res.ok) setData(await res.json());
+    setBusy(false);
+  }
+
+  const t = data?.totals;
+
+  return (
+    <div className="mt-6">
+      <div className="flex items-center justify-between">
+        <h2 className="font-display text-2xl text-grape">Profits &amp; expenses</h2>
+        <button onClick={load} className="btn-secondary !py-2 text-sm">
+          <RefreshCw className="h-4 w-4" /> Refresh
+        </button>
+      </div>
+      <p className="mt-1 text-sm text-plum/60">
+        Commissions and ACEO sales are added automatically. Add your supplies,
+        shipping costs, and any other income or expenses below.
+      </p>
+
+      {/* summary */}
+      {t && (
+        <div className="mt-5 grid gap-4 sm:grid-cols-3">
+          <div className="card text-center">
+            <div className="font-display text-3xl text-grape">{fmt(t.income)}</div>
+            <div className="text-sm text-plum/70">income</div>
+            <div className="mt-1 text-xs text-plum/50">{fmt(t.monthIncome)} this month</div>
+          </div>
+          <div className="card text-center">
+            <div className="font-display text-3xl text-rose">{fmt(t.expenses)}</div>
+            <div className="text-sm text-plum/70">expenses</div>
+            <div className="mt-1 text-xs text-plum/50">{fmt(t.monthExpenses)} this month</div>
+          </div>
+          <div className="card text-center">
+            <div className={`font-display text-3xl ${t.profit < 0 ? "text-rose" : "text-grape"}`}>
+              {fmt(t.profit)}
+            </div>
+            <div className="text-sm text-plum/70">profit</div>
+            <div className="mt-1 text-xs text-plum/50">{fmt(t.monthProfit)} this month</div>
+          </div>
+        </div>
+      )}
+
+      {/* add manual entry */}
+      <form onSubmit={addEntry} className="card mt-6">
+        <p className="font-semibold text-grape">Add an entry</p>
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <div className="inline-flex rounded-full border-2 border-petal bg-white/60 p-1">
+            {[
+              ["expense", "Expense"],
+              ["income", "Income"],
+            ].map(([v, l]) => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => setType(v)}
+                className={`rounded-full px-4 py-1.5 text-sm font-bold transition ${
+                  type === v ? "bg-rose text-white shadow-soft" : "text-grape hover:bg-petal/60"
+                }`}
+              >
+                {l}
+              </button>
+            ))}
+          </div>
+          <input
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            placeholder={type === "expense" ? "e.g. Canvas paper + paints" : "e.g. Art fair sales"}
+            className="min-w-0 flex-1 rounded-2xl border-2 border-petal/60 bg-white/70 p-2.5 text-plum placeholder:text-plum/40 focus:border-rose focus:outline-none"
+          />
+          <div className="flex items-center gap-1">
+            <span className="text-plum/60">$</span>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              placeholder="0.00"
+              className="w-24 rounded-2xl border-2 border-petal/60 bg-white/70 p-2.5 text-plum placeholder:text-plum/40 focus:border-rose focus:outline-none"
+            />
+          </div>
+          <input
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            className="rounded-2xl border-2 border-petal/60 bg-white/70 p-2.5 text-sm text-plum focus:border-rose focus:outline-none"
+          />
+          <button disabled={busy} className="btn-primary !py-2.5 text-sm disabled:opacity-60">
+            Add
+          </button>
+        </div>
+        <p className="mt-2 text-xs text-plum/50">
+          Leave the date empty to use today.
+        </p>
+        {error && <p className="mt-2 text-sm font-semibold text-rose">{error}</p>}
+      </form>
+
+      {/* ledger */}
+      {data === null && <p className="mt-6 text-plum/60">Loading…</p>}
+      {data !== null && data.entries.length === 0 && (
+        <p className="mt-6 text-center text-plum/60">
+          Nothing yet — approved commissions and ACEO sales will show up here
+          automatically.
+        </p>
+      )}
+      <div className="mt-5 space-y-2">
+        {(data?.entries || []).map((e) => (
+          <div
+            key={e.id}
+            className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-2xl border border-petal/60 bg-white/70 px-4 py-2.5 text-sm"
+          >
+            <span className="w-20 shrink-0 text-xs text-plum/50">
+              {new Date(e.at).toLocaleDateString()}
+            </span>
+            <span className="min-w-0 flex-1 font-semibold text-plum/80">{e.label}</span>
+            <span
+              className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+                e.source === "manual"
+                  ? "bg-lilac text-plum/70"
+                  : "bg-grape/10 text-grape"
+              }`}
+            >
+              {e.source === "commission" ? "Commission" : e.source === "aceo" ? "ACEO" : "Manual"}
+              {e.estimated ? " · est." : ""}
+            </span>
+            <span
+              className={`w-24 shrink-0 text-right font-bold ${
+                e.type === "expense" ? "text-rose" : "text-grape"
+              }`}
+            >
+              {e.type === "expense" ? "−" : "+"}
+              {fmt(e.amount)}
+            </span>
+            {e.source === "manual" ? (
+              <button
+                disabled={busy}
+                onClick={() => removeEntry(e.id)}
+                className="rounded-full border border-rose/50 px-2 py-0.5 text-xs font-semibold text-rose hover:bg-rose/10 disabled:opacity-40"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            ) : (
+              <span className="w-[34px]" />
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

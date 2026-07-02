@@ -221,6 +221,7 @@ export default function AdminPage() {
           {[
             ["commissions", "Commissions"],
             ["aceos", "ACEO Shop"],
+            ["reviews", "Reviews"],
           ].map(([v, label]) => (
             <button
               key={v}
@@ -246,6 +247,7 @@ export default function AdminPage() {
       </div>
 
       {view === "aceos" && <AceoManager />}
+      {view === "reviews" && <ReviewsManager />}
       {view === "commissions" && (
       <>
       <h1 className="sr-only">Commissions</h1>
@@ -819,6 +821,119 @@ function CommissionCard({ c, busy, onStatus, onStage, onPrice, onLink, onDelete,
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+// All public reviews in one place — commission reviews + open site reviews.
+function ReviewsManager() {
+  const [reviews, setReviews] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(async () => {
+    const res = await fetch("/api/admin/reviews", { cache: "no-store" });
+    if (res.ok) setReviews((await res.json()).reviews);
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  async function setHidden(r, hidden) {
+    setBusy(true);
+    await fetch("/api/admin/reviews", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ source: r.source, id: r.id, hidden }),
+    });
+    await load();
+    setBusy(false);
+  }
+
+  async function remove(r) {
+    if (!confirm("Remove this review completely? This can't be undone.")) return;
+    setBusy(true);
+    await fetch(
+      `/api/admin/reviews?source=${encodeURIComponent(r.source)}&id=${encodeURIComponent(r.id)}`,
+      { method: "DELETE" }
+    );
+    await load();
+    setBusy(false);
+  }
+
+  return (
+    <div className="mt-6">
+      <div className="flex items-center justify-between">
+        <h2 className="font-display text-2xl text-grape">Public reviews</h2>
+        <button onClick={load} className="btn-secondary !py-2 text-sm">
+          <RefreshCw className="h-4 w-4" /> Refresh
+        </button>
+      </div>
+      <p className="mt-1 text-sm text-plum/60">
+        Everything shown on your Reviews page — from commission orders and from
+        the open &quot;leave a review&quot; form. Hide anything you don&apos;t
+        want on the site, or remove it for good.
+      </p>
+
+      {reviews === null && <p className="mt-6 text-plum/60">Loading…</p>}
+      {reviews !== null && reviews.length === 0 && (
+        <p className="mt-6 text-center text-plum/60">No reviews yet.</p>
+      )}
+
+      <div className="mt-5 space-y-4">
+        {(reviews || []).map((r) => (
+          <div key={`${r.source}-${r.id}`} className={`card ${r.hidden ? "opacity-60" : ""}`}>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="flex gap-0.5">
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <Star
+                    key={n}
+                    className={`h-4 w-4 ${
+                      n <= r.rating ? "fill-rose text-rose" : "text-petal"
+                    }`}
+                    strokeWidth={1.5}
+                  />
+                ))}
+              </span>
+              <span className="font-semibold text-grape">{r.name}</span>
+              {r.source === "order" ? (
+                <span className="rounded-full bg-grape/10 px-2 py-0.5 text-xs font-semibold text-grape">
+                  Verified · {r.orderNumber}
+                </span>
+              ) : (
+                <span className="rounded-full bg-lilac px-2 py-0.5 text-xs font-semibold text-plum/70">
+                  Open review
+                </span>
+              )}
+              {r.hidden && (
+                <span className="rounded-full bg-plum/15 px-2 py-0.5 text-xs font-semibold text-plum/70">
+                  Hidden from site
+                </span>
+              )}
+              <span className="ml-auto text-xs text-plum/50">
+                {new Date(r.at).toLocaleDateString()}
+              </span>
+            </div>
+            <p className="mt-2 text-sm text-plum/80">“{r.text}”</p>
+            <div className="mt-3 flex gap-2">
+              <button
+                disabled={busy}
+                onClick={() => setHidden(r, !r.hidden)}
+                className="rounded-full border border-bubblegum px-3 py-1 text-xs font-semibold text-grape hover:bg-petal disabled:opacity-40"
+              >
+                {r.hidden ? "Show on site" : "Hide from site"}
+              </button>
+              <button
+                disabled={busy}
+                onClick={() => remove(r)}
+                className="rounded-full border border-rose/50 px-3 py-1 text-xs font-semibold text-rose hover:bg-rose/10 disabled:opacity-40"
+              >
+                Remove
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

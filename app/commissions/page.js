@@ -90,21 +90,14 @@ export default function CommissionsPage() {
     });
   }, [mediumId, sizeId, customSize, extraSubjects, backgroundId, ship.country]);
 
-  const contactValue = contactMethod === "instagram" ? instagram : email;
-
   async function submit() {
     setError("");
     if (!sizeId) return setError("Please pick a size.");
     if (isCustom && !customSize.trim()) return setError("Please enter your custom size.");
     if (!request.trim()) return setError("Tell me about your commission in the request box.");
     if (!name.trim()) return setError("Please add your name.");
-    if (!contactValue.trim()) {
-      return setError(
-        contactMethod === "instagram"
-          ? "Please add your Instagram handle."
-          : "Please add your email."
-      );
-    }
+    if (!instagram.trim()) return setError("Please add your Instagram handle.");
+    if (!email.trim() || !email.includes("@")) return setError("Please add your email.");
     if (!ship.line1.trim() || !ship.city.trim() || !ship.state.trim() || !ship.zip.trim()) {
       return setError("Please add your shipping address so I can include shipping.");
     }
@@ -488,13 +481,27 @@ export default function CommissionsPage() {
                 className="w-full rounded-2xl border-2 border-petal/60 bg-white/70 p-3 text-plum placeholder:text-plum/40 focus:border-rose focus:outline-none"
               />
 
+              <input
+                value={instagram}
+                onChange={(e) => setInstagram(e.target.value)}
+                placeholder="Your Instagram @handle"
+                className="w-full rounded-2xl border-2 border-petal/60 bg-white/70 p-3 text-plum placeholder:text-plum/40 focus:border-rose focus:outline-none"
+              />
+              <input
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                type="email"
+                placeholder="Your email"
+                className="w-full rounded-2xl border-2 border-petal/60 bg-white/70 p-3 text-plum placeholder:text-plum/40 focus:border-rose focus:outline-none"
+              />
+
               <div>
                 <p className="mb-1 text-sm font-semibold text-grape">
-                  How should I reach you?
+                  Where should I message you first?
                 </p>
                 <div className="grid grid-cols-2 gap-2">
                   {[
-                    { id: "instagram", label: "Instagram" },
+                    { id: "instagram", label: "Instagram DM" },
                     { id: "email", label: "Email" },
                   ].map((m) => (
                     <button
@@ -512,24 +519,6 @@ export default function CommissionsPage() {
                   ))}
                 </div>
               </div>
-
-              {contactMethod === "instagram" && (
-                <input
-                  value={instagram}
-                  onChange={(e) => setInstagram(e.target.value)}
-                  placeholder="@yourhandle"
-                  className="w-full rounded-2xl border-2 border-petal/60 bg-white/70 p-3 text-plum placeholder:text-plum/40 focus:border-rose focus:outline-none"
-                />
-              )}
-              {contactMethod === "email" && (
-                <input
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  type="email"
-                  placeholder="Your email"
-                  className="w-full rounded-2xl border-2 border-petal/60 bg-white/70 p-3 text-plum placeholder:text-plum/40 focus:border-rose focus:outline-none"
-                />
-              )}
               <p className="text-xs text-plum/60">
                 P.S. Follow{" "}
                 <a

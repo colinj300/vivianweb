@@ -13,7 +13,7 @@ export async function POST(req) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const body = await req.json();
-  const { name, email, mediumId, sizeName, additionalSubjects, backgroundId, price, notes } = body;
+  const { name, email, instagram, mediumId, sizeName, additionalSubjects, backgroundId, price, notes } = body;
 
   if (!name?.trim()) {
     return NextResponse.json({ error: "Please enter a name." }, { status: 400 });
@@ -35,6 +35,8 @@ export async function POST(req) {
     createdAt: new Date().toISOString(),
     name: name.trim().slice(0, 200),
     email: (email || "").trim().slice(0, 200),
+    instagram: (instagram || "").trim().slice(0, 80),
+    contactMethod: instagram?.trim() ? "instagram" : "email",
     mediumId: medium.id,
     mediumName: medium.name,
     sizeId: null,

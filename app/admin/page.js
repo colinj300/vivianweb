@@ -25,6 +25,7 @@ export default function AdminPage() {
   const [diag, setDiag] = useState(null);
   const [testMsg, setTestMsg] = useState("");
   const [showStatus, setShowStatus] = useState(false);
+  const [showCompleted, setShowCompleted] = useState(false);
 
   // The session cookie is sent automatically — no password handling here.
   const load = useCallback(async () => {
@@ -342,28 +343,72 @@ export default function AdminPage() {
 
       <AddCommission onAdded={() => load()} />
 
-      {/* requests */}
-      <div className="mt-8 space-y-5">
-        {data.commissions.length === 0 && (
-          <p className="text-center text-plum/60">No requests yet.</p>
-        )}
-        {data.commissions.map((c) => (
-          <CommissionCard
-            key={c.id}
-            c={c}
-            busy={busy}
-            onStatus={updateStatus}
-            onStage={updateStage}
-            onPrice={setPrice}
-            onLink={makeLink}
-            onDelete={removeCommission}
-            onAddProgress={addProgress}
-            onRemoveProgress={removeProgress}
-            onHideReview={hideReview}
-            onRemoveReview={removeReview}
-          />
-        ))}
-      </div>
+      {/* requests — active pipeline first (pending → in the works → waitlist) */}
+      {(() => {
+        const cardProps = {
+          busy,
+          onStatus: updateStatus,
+          onStage: updateStage,
+          onPrice: setPrice,
+          onLink: makeLink,
+          onDelete: removeCommission,
+          onAddProgress: addProgress,
+          onRemoveProgress: removeProgress,
+          onHideReview: hideReview,
+          onRemoveReview: removeReview,
+        };
+        const rank = { pending: 0, approved: 1, waitlist: 2, declined: 3 };
+        const active = data.commissions
+          .filter((c) => c.status !== "completed")
+          .sort(
+            (a, b) =>
+              (rank[a.status] ?? 9) - (rank[b.status] ?? 9) ||
+              new Date(b.createdAt) - new Date(a.createdAt)
+          );
+        const completed = data.commissions
+          .filter((c) => c.status === "completed")
+          .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        return (
+          <>
+            <div className="mt-8 space-y-5">
+              {active.length === 0 && (
+                <p className="text-center text-plum/60">
+                  {completed.length
+                    ? "Nothing in the works — everything is completed! 🎉"
+                    : "No requests yet."}
+                </p>
+              )}
+              {active.map((c) => (
+                <CommissionCard key={c.id} c={c} {...cardProps} />
+              ))}
+            </div>
+
+            {/* completed orders */}
+            {completed.length > 0 && (
+              <div className="mt-10">
+                <button
+                  onClick={() => setShowCompleted((v) => !v)}
+                  className="flex w-full items-center justify-between rounded-2xl border-2 border-petal bg-white/60 px-5 py-3 text-left"
+                >
+                  <span className="font-display text-xl text-grape">
+                    Completed orders ({completed.length})
+                  </span>
+                  <span className="text-sm font-semibold text-plum/60">
+                    {showCompleted ? "Hide" : "Show"}
+                  </span>
+                </button>
+                {showCompleted && (
+                  <div className="mt-5 space-y-5">
+                    {completed.map((c) => (
+                      <CommissionCard key={c.id} c={c} {...cardProps} />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </>
+        );
+      })()}
       </>
       )}
     </div>
@@ -429,9 +474,31 @@ function CommissionCard({ c, busy, onStatus, onStage, onPrice, onLink, onDelete,
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h3 className="font-display text-2xl text-grape">{c.name}</h3>
-          <a href={`mailto:${c.email}`} className="text-sm text-rose underline">
-            {c.email}
-          </a>
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-sm">
+            {c.instagram ? (
+              <a
+                href={`https://instagram.com/${c.instagram.replace(/^@/, "")}`}
+                target="_blank"
+                rel="noreferrer"
+                className="font-semibold text-rose underline"
+              >
+                {c.instagram.startsWith("@") ? c.instagram : `@${c.instagram}`}
+              </a>
+            ) : (
+              <span className="font-semibold text-rose/70">no IG on file</span>
+            )}
+            {c.email ? (
+              <a href={`mailto:${c.email}`} className="text-rose underline">
+                {c.email}
+              </a>
+            ) : (
+              <span className="font-semibold text-rose/70">no email on file</span>
+            )}
+            {c.phone && <span className="text-plum/70">{c.phone}</span>}
+            <span className="text-xs font-semibold text-grape">
+              (prefers {c.contactMethod === "instagram" ? "Instagram DM" : c.contactMethod || "email"})
+            </span>
+          </div>
           <p className="mt-1 text-xs text-plum/50">
             {new Date(c.createdAt).toLocaleString()}
           </p>
@@ -464,22 +531,9 @@ function CommissionCard({ c, busy, onStatus, onStage, onPrice, onLink, onDelete,
         <span className="flex items-center gap-1"><DollarSign className="h-4 w-4" /> {c.isCustom ? `extras $${c.estimate} + base TBD` : c.estimate != null ? `est $${c.estimate}` : "price TBD"}{c.finalPrice ? ` · final $${c.finalPrice}` : ""}</span>
       </div>
 
-      {c.orderNumber && (
+      {c.orderNumber && (!c.email || !c.instagram) && (
         <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-plum/70">
-          <span>
-            {c.instagram || c.email || c.phone ? (
-              <>
-                {c.instagram && <>IG: {c.instagram}&nbsp;&nbsp;</>}
-                {c.phone && <>Phone: {c.phone}&nbsp;&nbsp;</>}
-                {c.email && <>Email: {c.email}&nbsp;&nbsp;</>}
-                <span className="font-semibold text-grape">
-                  (prefers {c.contactMethod || "email"})
-                </span>
-              </>
-            ) : (
-              "No contact info yet — send them the link →"
-            )}
-          </span>
+          <span>Missing contact info — send them this form:</span>
           <button
             onClick={() =>
               navigator.clipboard?.writeText(`${window.location.origin}/my-order?order=${c.orderNumber}`)
@@ -520,7 +574,18 @@ function CommissionCard({ c, busy, onStatus, onStage, onPrice, onLink, onDelete,
           }`}
         >
           {c.review.response === "loved" ? (
-            <span className="font-semibold text-grape">★ Customer approved this piece!</span>
+            <span className="flex flex-wrap items-center gap-2">
+              <span className="font-semibold text-grape">★ Customer approved this piece!</span>
+              {c.status === "approved" && (
+                <button
+                  disabled={busy}
+                  onClick={() => onStatus(c.id, "completed")}
+                  className="rounded-full bg-grape px-3 py-1 text-xs font-semibold text-white transition hover:bg-grape/85 disabled:opacity-40"
+                >
+                  Shipped it? Mark completed ✓
+                </button>
+              )}
+            </span>
           ) : (
             <>
               <span className="font-semibold text-rose">Revision requested:</span>{" "}
@@ -1151,6 +1216,7 @@ function AddCommission({ onAdded }) {
   const blank = {
     name: "",
     email: "",
+    instagram: "",
     mediumId: mediums[0].id,
     sizeName: "",
     subjects: 1,
@@ -1173,6 +1239,7 @@ function AddCommission({ onAdded }) {
       body: JSON.stringify({
         name: f.name,
         email: f.email,
+        instagram: f.instagram,
         mediumId: f.mediumId,
         sizeName: f.sizeName,
         additionalSubjects: Math.max(0, (Number(f.subjects) || 1) - 1),
@@ -1210,6 +1277,7 @@ function AddCommission({ onAdded }) {
       </p>
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <input value={f.name} onChange={set("name")} placeholder="Customer name" className="rounded-2xl border-2 border-petal/60 bg-white/70 p-3 text-plum focus:border-rose focus:outline-none" />
+        <input value={f.instagram} onChange={set("instagram")} placeholder="Instagram @handle (optional)" className="rounded-2xl border-2 border-petal/60 bg-white/70 p-3 text-plum focus:border-rose focus:outline-none" />
         <input value={f.email} onChange={set("email")} placeholder="Email (optional)" className="rounded-2xl border-2 border-petal/60 bg-white/70 p-3 text-plum focus:border-rose focus:outline-none" />
         <select value={f.mediumId} onChange={set("mediumId")} className="rounded-2xl border-2 border-petal/60 bg-white/70 p-3 text-plum focus:border-rose focus:outline-none">
           {mediums.map((m) => (

@@ -40,8 +40,8 @@ export default function MyOrderPage() {
     e.preventDefault();
     setError("");
     if (!order.trim()) return setError("Please enter your order number.");
-    if (method === "instagram" && !instagram.trim()) return setError("Please add your Instagram handle.");
-    if (method === "email" && !email.trim()) return setError("Please add your email.");
+    if (!instagram.trim()) return setError("Please add your Instagram handle.");
+    if (!email.trim() || !email.includes("@")) return setError("Please add your email.");
     setBusy(true);
     try {
       const res = await fetch("/api/connect", {
@@ -106,12 +106,36 @@ export default function MyOrderPage() {
         </div>
 
         <div>
+          <label className="mb-1 block text-sm font-semibold text-grape">
+            Your Instagram
+          </label>
+          <input
+            value={instagram}
+            onChange={(e) => setInstagram(e.target.value)}
+            placeholder="@yourhandle"
+            className="w-full rounded-2xl border-2 border-petal/60 bg-white/70 p-3 text-plum placeholder:text-plum/40 focus:border-rose focus:outline-none"
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-sm font-semibold text-grape">
+            Your email
+          </label>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@email.com"
+            className="w-full rounded-2xl border-2 border-petal/60 bg-white/70 p-3 text-plum placeholder:text-plum/40 focus:border-rose focus:outline-none"
+          />
+        </div>
+
+        <div>
           <label className="mb-2 block text-sm font-semibold text-grape">
-            How should Vivian reach you?
+            Where should Vivian message you first?
           </label>
           <div className="grid grid-cols-2 gap-2">
             {[
-              { id: "instagram", label: "Instagram", Icon: AtSign },
+              { id: "instagram", label: "Instagram DM", Icon: AtSign },
               { id: "email", label: "Email", Icon: Mail },
             ].map(({ id, label, Icon }) => (
               <button
@@ -129,24 +153,6 @@ export default function MyOrderPage() {
             ))}
           </div>
         </div>
-
-        {method === "instagram" && (
-          <input
-            value={instagram}
-            onChange={(e) => setInstagram(e.target.value)}
-            placeholder="@yourhandle"
-            className="w-full rounded-2xl border-2 border-petal/60 bg-white/70 p-3 text-plum placeholder:text-plum/40 focus:border-rose focus:outline-none"
-          />
-        )}
-        {method === "email" && (
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@email.com"
-            className="w-full rounded-2xl border-2 border-petal/60 bg-white/70 p-3 text-plum placeholder:text-plum/40 focus:border-rose focus:outline-none"
-          />
-        )}
 
         <p className="text-xs text-plum/60">
           P.S. Follow{" "}

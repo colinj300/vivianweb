@@ -17,13 +17,16 @@ export async function POST(req) {
 
   const method = ["instagram", "text", "email"].includes(contactMethod)
     ? contactMethod
-    : "email";
-  const value = method === "instagram" ? instagram : method === "text" ? phone : email;
-  if (!value?.trim()) {
+    : "instagram";
+  // Both are required so Vivian always has two ways to reach the customer.
+  if (!instagram?.trim()) {
     return NextResponse.json(
-      { error: `Please add your ${method === "instagram" ? "Instagram handle" : method === "text" ? "phone number" : "email"}.` },
+      { error: "Please add your Instagram handle." },
       { status: 400 }
     );
+  }
+  if (!email?.trim() || !email.includes("@")) {
+    return NextResponse.json({ error: "Please add your email." }, { status: 400 });
   }
 
   await updateCommission(c.id, {

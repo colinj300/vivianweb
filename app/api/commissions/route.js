@@ -46,18 +46,20 @@ export async function POST(req) {
 
     const method = ["instagram", "text", "email"].includes(contactMethod)
       ? contactMethod
-      : "email";
-    const contactValue =
-      method === "instagram" ? instagram : method === "text" ? phone : email;
+      : "instagram";
 
     if (!name?.trim()) {
       return NextResponse.json({ error: "Please add your name." }, { status: 400 });
     }
-    if (!contactValue?.trim()) {
+    // Both are required so Vivian always has two ways to reach the customer.
+    if (!instagram?.trim()) {
       return NextResponse.json(
-        { error: "Please add a way to reach you (Instagram, phone, or email)." },
+        { error: "Please add your Instagram handle." },
         { status: 400 }
       );
+    }
+    if (!email?.trim() || !email.includes("@")) {
+      return NextResponse.json({ error: "Please add your email." }, { status: 400 });
     }
     if (!request?.trim()) {
       return NextResponse.json(

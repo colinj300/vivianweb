@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Flower2, ShoppingBag } from "lucide-react";
+import { Flower2, ShoppingBag, Sticker, ArrowRight } from "lucide-react";
 
 export default function ShopPage() {
   const [aceos, setAceos] = useState(null);
   const [busyId, setBusyId] = useState(null);
   const [error, setError] = useState("");
+  const [pre, setPre] = useState(null);
 
   async function load() {
     const res = await fetch("/api/shop/aceos", { cache: "no-store" });
@@ -16,6 +17,10 @@ export default function ShopPage() {
   }
   useEffect(() => {
     load();
+    fetch("/api/preorder", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => setPre(d.active ? d : null))
+      .catch(() => {});
   }, []);
 
   async function buy(id) {
@@ -51,6 +56,33 @@ export default function ShopPage() {
         Tiny 2.5&quot; × 3.5&quot; hand-painted originals — one of a kind. Once
         it&apos;s gone, it&apos;s gone!
       </p>
+
+      {/* sticker pre-order banner */}
+      {pre && (
+        <Link
+          href="/preorder"
+          className="mt-8 flex flex-wrap items-center gap-4 rounded-3xl border-2 border-bubblegum bg-gradient-to-r from-lilac/70 to-petal/50 p-5 transition hover:shadow-soft"
+        >
+          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-rose text-white">
+            <Sticker className="h-6 w-6" strokeWidth={1.75} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="font-display text-xl text-grape">
+              Pre-order: {pre.title}
+            </p>
+            <p className="text-sm text-plum/70">
+              {pre.open
+                ? `Pay now, ships by ${pre.shipBy} · ${pre.count}/${pre.goal} pre-ordered`
+                : pre.met
+                ? "Funded! Pre-orders closed 🎉"
+                : "This drop has ended"}
+            </p>
+          </div>
+          <span className="btn-primary !py-2 text-sm">
+            {pre.open ? "Pre-order now" : "See details"} <ArrowRight className="h-4 w-4" />
+          </span>
+        </Link>
+      )}
 
       {error && (
         <p className="mt-5 text-center text-sm font-semibold text-rose">{error}</p>

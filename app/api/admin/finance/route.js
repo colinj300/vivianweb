@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { isAuthorized } from "@/lib/admin";
+import { preorder } from "@/lib/config";
 import {
   listCommissions,
   listAceos,
+  listPreorders,
   listFinanceEntries,
   saveFinanceEntry,
   deleteFinanceEntry,
@@ -12,9 +14,10 @@ import {
 // Build the full ledger: auto income from commissions + ACEO sales, plus
 // the manual entries Vivian adds herself.
 async function buildLedger() {
-  const [commissions, aceos, manual] = await Promise.all([
+  const [commissions, aceos, preorders, manual] = await Promise.all([
     listCommissions(),
     listAceos(),
+    listPreorders(),
     listFinanceEntries(),
   ]);
 
@@ -44,6 +47,20 @@ async function buildLedger() {
       amount: Number(a.price) || 0,
       at: a.soldAt || a.createdAt,
       source: "aceo",
+      estimated: false,
+    });
+  }
+
+  // Pre-order income (only sheets that are still paid — refunded ones drop off).
+  for (const p of preorders) {
+    if (p.status !== "paid" && p.status !== "fulfilled") continue;
+    auto.push({
+      id: `preorder-${p.id}`,
+      type: "income",
+      label: `Pre-order — ${preorder.title}${p.quantity > 1 ? ` ×${p.quantity}` : ""} (${p.name || "buyer"})`,
+      amount: Number(p.amount) || 0,
+      at: p.createdAt,
+      source: "preorder",
       estimated: false,
     });
   }

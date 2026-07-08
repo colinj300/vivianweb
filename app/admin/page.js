@@ -222,6 +222,7 @@ export default function AdminPage() {
           {[
             ["commissions", "Commissions"],
             ["aceos", "ACEO Shop"],
+            ["preorders", "Pre-orders"],
             ["reviews", "Reviews"],
             ["money", "Money"],
           ].map(([v, label]) => (
@@ -249,6 +250,7 @@ export default function AdminPage() {
       </div>
 
       {view === "aceos" && <AceoManager />}
+      {view === "preorders" && <PreorderManager />}
       {view === "reviews" && <ReviewsManager />}
       {view === "money" && <MoneyManager />}
       {view === "commissions" && (
@@ -892,6 +894,267 @@ function CommissionCard({ c, busy, onStatus, onStage, onPrice, onLink, onDelete,
   );
 }
 
+// Sticker pre-order dashboard: progress toward goal, listing photo, buyer
+// list, and the one-click "refund everyone" button if the goal is missed.
+function PreorderManager() {
+  const [d, setD] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef(null);
+
+  const load = useCallback(async () => {
+    const res = await fetch("/api/admin/preorders", { cache: "no-store" });
+    if (res.ok) setD(await res.json());
+  }, []);
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  async function act(body, confirmMsg) {
+    if (confirmMsg && !confirm(confirmMsg)) return;
+    setBusy(true);
+    setMsg("");
+    const res = await fetch("/api/admin/preorders", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const j = await res.json().catch(() => ({}));
+    if (res.ok) {
+      setD(j);
+      if (typeof j.refunded === "number") {
+        setMsg(
+          `Refunded ${j.refunded} order(s).` +
+            (j.failures?.length ? ` ${j.failures.length} failed — check Stripe.` : "")
+        );
+      }
+    } else {
+      setMsg(j.error || "Something went wrong.");
+    }
+    setBusy(false);
+  }
+
+  async function onFile(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setMsg("");
+    try {
+      const compressed = await compressImage(file);
+      const fd = new FormData();
+      fd.append("file", compressed);
+      const res = await fetch("/api/upload", { method: "POST", body: fd });
+      const j = await res.json().catch(() => ({}));
+      if (res.ok && j.url) await act({ action: "setImage", image: j.url });
+      else setMsg(j.error || "Upload failed.");
+    } catch {
+      setMsg("Upload failed. Please try again.");
+    }
+    setUploading(false);
+    if (fileRef.current) fileRef.current.value = "";
+  }
+
+  if (d === null) return <p className="mt-6 text-plum/60">Loading…</p>;
+
+  const s = d.state;
+  const fmt = (n) => `$${(Math.round(n * 100) / 100).toFixed(2)}`;
+  const pct = Math.min(100, Math.round((s.count / s.goal) * 100));
+  const phaseLabel =
+    s.phase === "open" ? "Open" : s.phase === "funded" ? "Funded ✓" : "Goal missed";
+  const phaseColor =
+    s.phase === "open"
+      ? "bg-lilac text-plum/80"
+      : s.phase === "funded"
+      ? "bg-grape/15 text-grape"
+      : "bg-rose/15 text-rose";
+
+  return (
+    <div className="mt-6">
+      <div className="flex items-center justify-between">
+        <h2 className="font-display text-2xl text-grape">
+          Pre-orders — {d.product.title}
+        </h2>
+        <button onClick={load} className="btn-secondary !py-2 text-sm">
+          <RefreshCw className="h-4 w-4" /> Refresh
+        </button>
+      </div>
+      {!d.product.active && (
+        <p className="mt-1 text-sm font-semibold text-rose">
+          This pre-order is hidden from the site (set <code>active: true</code> in config.js to show it).
+        </p>
+      )}
+
+      {/* summary */}
+      <div className="mt-5 grid gap-4 sm:grid-cols-4">
+        <div className="card text-center">
+          <div className="font-display text-3xl text-grape">{s.count}/{s.goal}</div>
+          <div className="text-sm text-plum/70">pre-ordered</div>
+        </div>
+        <div className="card text-center">
+          <div className="font-display text-3xl text-rose">{fmt(d.revenue)}</div>
+          <div className="text-sm text-plum/70">collected</div>
+        </div>
+        <div className="card text-center">
+          <div className={`inline-block rounded-full px-3 py-1 text-sm font-bold ${phaseColor}`}>
+            {phaseLabel}
+          </div>
+          <div className="mt-1 text-xs text-plum/50">
+            deadline {d.product.deadline}
+          </div>
+        </div>
+        <div className="card text-center">
+          <div className="font-display text-3xl text-grape">{d.refundedCount}</div>
+          <div className="text-sm text-plum/70">refunded</div>
+        </div>
+      </div>
+
+      {/* progress bar */}
+      <div className="mt-4 h-4 overflow-hidden rounded-full bg-petal/60">
+        <div
+          className="h-full rounded-full bg-gradient-to-r from-bubblegum to-rose"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+
+      {/* deadline-passed prompts */}
+      {s.phase === "failed" && (
+        <div className="mt-5 rounded-2xl border-2 border-rose/40 bg-rose/5 p-4">
+          <p className="font-semibold text-rose">
+            The deadline passed and you fell short ({s.count}/{s.goal}).
+          </p>
+          <p className="mt-1 text-sm text-plum/70">
+            Refund every buyer through Stripe in one click. Each person gets their money back
+            and an email letting them know.
+          </p>
+          <button
+            onClick={() =>
+              act(
+                { action: "refundAll" },
+                `Refund ALL ${s.count} paid pre-order(s) through Stripe? This can't be undone.`
+              )
+            }
+            disabled={busy}
+            className="mt-3 rounded-full bg-rose px-4 py-2 text-sm font-bold text-white hover:bg-rose/85 disabled:opacity-50"
+          >
+            Refund everyone
+          </button>
+        </div>
+      )}
+      {s.phase === "funded" && (
+        <div className="mt-5 rounded-2xl border-2 border-grape/30 bg-grape/5 p-4">
+          <p className="font-semibold text-grape">
+            You hit your goal! 🎉 Time to print and ship by {d.product.shipBy}.
+          </p>
+          <button
+            onClick={() => act({ action: "fulfillAll" }, "Mark all paid pre-orders as fulfilled/shipped?")}
+            disabled={busy}
+            className="mt-3 rounded-full bg-grape px-4 py-2 text-sm font-bold text-white hover:bg-grape/85 disabled:opacity-50"
+          >
+            Mark all as shipped
+          </button>
+        </div>
+      )}
+
+      {/* listing photo */}
+      <div className="mt-6 card">
+        <p className="font-semibold text-grape">Listing photo</p>
+        <p className="mt-1 text-sm text-plum/60">
+          This is what buyers see on the pre-order page. Upload the real sticker sheet photo.
+        </p>
+        <div className="mt-3 flex items-center gap-4">
+          <div className="h-24 w-24 overflow-hidden rounded-xl border-2 border-petal bg-lilac/40">
+            {d.image ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={d.image} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center text-plum/40">
+                <ImagePlus className="h-6 w-6" />
+              </div>
+            )}
+          </div>
+          <div>
+            <button
+              onClick={() => fileRef.current?.click()}
+              disabled={uploading}
+              className="btn-secondary !py-2 text-sm disabled:opacity-60"
+            >
+              {uploading ? "Uploading…" : d.image ? "Replace photo" : "Upload photo"}
+            </button>
+            <input ref={fileRef} type="file" accept="image/*" onChange={onFile} className="hidden" />
+          </div>
+        </div>
+      </div>
+
+      {msg && <p className="mt-4 rounded-xl bg-lilac/40 p-3 text-sm font-semibold text-plum/80">{msg}</p>}
+
+      {/* buyer list */}
+      <h3 className="mt-8 font-display text-xl text-grape">Buyers ({d.orders.length})</h3>
+      {d.orders.length === 0 && (
+        <p className="mt-3 text-center text-plum/60">No pre-orders yet.</p>
+      )}
+      <div className="mt-4 space-y-3">
+        {d.orders.map((o) => (
+          <div key={o.id} className="card">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <span className="font-semibold text-grape">{o.name || "Buyer"}</span>
+              {o.email && (
+                <a href={`mailto:${o.email}`} className="text-sm text-rose underline">
+                  {o.email}
+                </a>
+              )}
+              <span className="text-sm text-plum/70">
+                ×{o.quantity} · {fmt(o.amount)}
+              </span>
+              <span
+                className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+                  o.status === "refunded"
+                    ? "bg-plum/15 text-plum/70"
+                    : o.status === "fulfilled"
+                    ? "bg-grape/15 text-grape"
+                    : "bg-lilac text-plum/80"
+                }`}
+              >
+                {o.status}
+              </span>
+              <span className="ml-auto text-xs text-plum/50">
+                {new Date(o.createdAt).toLocaleDateString()}
+              </span>
+            </div>
+            {o.shipping && (
+              <p className="mt-2 whitespace-pre-line text-xs text-plum/60">
+                {`${o.shipping.name}\n${o.shipping.line1}${o.shipping.line2 ? ", " + o.shipping.line2 : ""}\n${o.shipping.city}, ${o.shipping.state} ${o.shipping.zip} ${o.shipping.country}`}
+              </p>
+            )}
+            {(o.status === "paid" || o.status === "fulfilled") && (
+              <div className="mt-2 flex gap-2">
+                {o.status === "paid" && (
+                  <button
+                    disabled={busy}
+                    onClick={() => act({ action: "fulfill", id: o.id })}
+                    className="rounded-full border border-bubblegum px-3 py-1 text-xs font-semibold text-grape hover:bg-petal disabled:opacity-40"
+                  >
+                    Mark shipped
+                  </button>
+                )}
+                <button
+                  disabled={busy}
+                  onClick={() =>
+                    act({ action: "refund", id: o.id }, `Refund ${o.name || "this buyer"} (${fmt(o.amount)})?`)
+                  }
+                  className="rounded-full border border-rose/50 px-3 py-1 text-xs font-semibold text-rose hover:bg-rose/10 disabled:opacity-40"
+                >
+                  Refund
+                </button>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // Profit & expense tracker. Commission + ACEO income is pulled in
 // automatically; Vivian adds everything else (supplies, other income) here.
 function MoneyManager() {
@@ -1070,7 +1333,13 @@ function MoneyManager() {
                   : "bg-grape/10 text-grape"
               }`}
             >
-              {e.source === "commission" ? "Commission" : e.source === "aceo" ? "ACEO" : "Manual"}
+              {e.source === "commission"
+                ? "Commission"
+                : e.source === "aceo"
+                ? "ACEO"
+                : e.source === "preorder"
+                ? "Pre-order"
+                : "Manual"}
               {e.estimated ? " · est." : ""}
             </span>
             <span

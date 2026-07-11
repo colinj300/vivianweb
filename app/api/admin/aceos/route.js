@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
+import Stripe from "stripe";
 import { aceoPrice } from "@/lib/config";
 import { isAuthorized } from "@/lib/admin";
-import { listAceos, saveAceo, updateAceo, deleteAceo } from "@/lib/store";
+import { listAceos, saveAceo, updateAceo, deleteAceo, getAceo } from "@/lib/store";
+import { orderFromSession } from "@/lib/stripeOrder";
 
 // List all ACEO listings (owner view).
 export async function GET(req) {
@@ -33,13 +35,58 @@ export async function POST(req) {
   return NextResponse.json({ ok: true, aceo: record });
 }
 
-// Update a listing (status / price / title).
+// Update a listing (status / price / title), or backfill buyer info.
 export async function PATCH(req) {
   if (!isAuthorized(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const { id, status, price, title } = await req.json();
+  const { id, status, price, title, action } = await req.json();
   if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
+
+  // Backfill the buyer + shipping address from Stripe for an order that
+  // sold before we started saving those details (or to re-sync).
+  if (action === "fetchBuyer") {
+    const key = process.env.STRIPE_SECRET_KEY;
+    if (!key) {
+      return NextResponse.json({ error: "Payments aren't connected." }, { status: 503 });
+    }
+    const aceo = await getAceo(id);
+    if (!aceo) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    try {
+      const stripe = new Stripe(key);
+      let match = null;
+      // Prefer the session id if we already have one; otherwise scan recent
+      // paid checkout sessions for one tagged with this ACEO.
+      if (aceo.sessionId) {
+        match = await stripe.checkout.sessions.retrieve(aceo.sessionId);
+      } else {
+        const list = await stripe.checkout.sessions.list({ limit: 100 });
+        const found = list.data.find(
+          (s) => s.metadata?.aceoId === id && s.payment_status === "paid"
+        );
+        if (found) match = await stripe.checkout.sessions.retrieve(found.id);
+      }
+      if (!match) {
+        return NextResponse.json(
+          { error: "Couldn't find this sale in Stripe (it may be older than the last 100 orders)." },
+          { status: 404 }
+        );
+      }
+      const order = orderFromSession(match);
+      const updated = await updateAceo(id, {
+        status: "sold",
+        sessionId: order.sessionId,
+        buyer: order.buyer,
+        shipping: order.shipping,
+        soldPrice: order.amount || aceo.price,
+      });
+      return NextResponse.json({ ok: true, aceo: updated });
+    } catch (err) {
+      console.error("ACEO fetchBuyer error:", err?.message);
+      return NextResponse.json({ error: err?.message || "Stripe lookup failed." }, { status: 500 });
+    }
+  }
+
   const patch = {};
   if (status && ["available", "sold"].includes(status)) patch.status = status;
   if (price !== undefined && price !== "") patch.price = Math.max(1, Math.round(Number(price)));

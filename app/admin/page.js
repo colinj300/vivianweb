@@ -1660,6 +1660,22 @@ function AceoManager() {
     setBusy(false);
   }
 
+  async function fetchBuyer(id) {
+    setBusy(true);
+    setMsg("");
+    const res = await fetch("/api/admin/aceos", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, action: "fetchBuyer" }),
+    });
+    const d = await res.json().catch(() => ({}));
+    if (!res.ok) setMsg(d.error || "Couldn't fetch buyer info from Stripe.");
+    await load();
+    setBusy(false);
+  }
+
+  const sold = (aceos || []).filter((a) => a.status === "sold");
+
   return (
     <div className="mt-6">
       {/* create form */}
@@ -1746,6 +1762,79 @@ function AceoManager() {
           </div>
         ))}
       </div>
+
+      {/* sold orders — buyer + shipping address */}
+      {sold.length > 0 && (
+        <div className="mt-10">
+          <h2 className="font-display text-2xl text-grape">Sold orders — ship these</h2>
+          <p className="mt-1 text-sm text-plum/60">
+            Buyer and shipping address for each sold ACEO, straight from Stripe.
+          </p>
+          <div className="mt-4 space-y-4">
+            {sold.map((a) => (
+              <div key={a.id} className="card flex flex-wrap gap-4">
+                <div className="h-24 w-[68px] shrink-0 overflow-hidden rounded-xl border-2 border-petal">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={a.imageUrl} alt={a.title} className="h-full w-full object-cover" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                    <span className="font-semibold text-grape">{a.title}</span>
+                    <span className="text-sm text-rose">${a.soldPrice ?? a.price}</span>
+                    {a.soldAt && (
+                      <span className="text-xs text-plum/50">
+                        sold {new Date(a.soldAt).toLocaleDateString()}
+                      </span>
+                    )}
+                  </div>
+                  {(a.buyer?.name || a.buyer?.email) && (
+                    <p className="mt-0.5 text-sm text-plum/80">
+                      {a.buyer?.name}
+                      {a.buyer?.email && (
+                        <>
+                          {" · "}
+                          <a href={`mailto:${a.buyer.email}`} className="text-rose underline">
+                            {a.buyer.email}
+                          </a>
+                        </>
+                      )}
+                    </p>
+                  )}
+
+                  {a.shipping ? (
+                    <div className="mt-2 rounded-xl border border-bubblegum/50 bg-white/70 p-3 text-sm">
+                      <p className="whitespace-pre-line text-plum/80">
+                        {`${a.shipping.name}\n${a.shipping.line1}${a.shipping.line2 ? ", " + a.shipping.line2 : ""}\n${a.shipping.city}, ${a.shipping.state} ${a.shipping.zip}\n${a.shipping.country}`}
+                      </p>
+                      <button
+                        onClick={() =>
+                          navigator.clipboard?.writeText(
+                            `${a.shipping.name}\n${a.shipping.line1}${a.shipping.line2 ? "\n" + a.shipping.line2 : ""}\n${a.shipping.city}, ${a.shipping.state} ${a.shipping.zip}\n${a.shipping.country}`
+                          )
+                        }
+                        className="mt-1 rounded-full border border-bubblegum px-3 py-0.5 text-xs font-semibold text-grape hover:bg-petal"
+                      >
+                        Copy address
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <span className="text-sm text-plum/60">No address saved for this sale.</span>
+                      <button
+                        disabled={busy}
+                        onClick={() => fetchBuyer(a.id)}
+                        className="rounded-full bg-grape px-3 py-1 text-xs font-semibold text-white hover:bg-grape/85 disabled:opacity-50"
+                      >
+                        {busy ? "…" : "Fetch address from Stripe"}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -3,6 +3,7 @@ import Stripe from "stripe";
 import { site } from "@/lib/config";
 import { getAceo, updateAceo } from "@/lib/store";
 import { sendSMS, sendEmail } from "@/lib/notify";
+import { orderFromSession, formatAddress } from "@/lib/stripeOrder";
 
 // Called by the thank-you page after checkout. Verifies the payment with
 // Stripe and marks the ACEO sold (so it disappears from the shop).
@@ -25,15 +26,20 @@ export async function GET(req) {
       title = aceo?.title || "";
       // First confirmation only — mark sold and send the receipts/alerts once.
       if (aceo && aceo.status !== "sold") {
-        await updateAceo(aceoId, { status: "sold", soldAt: new Date().toISOString() });
+        const order = orderFromSession(session);
+        const buyerName = order.buyer.name || "there";
+        const buyerEmail = order.buyer.email;
+        const addr = formatAddress(order.shipping);
 
-        const buyerEmail = session.customer_details?.email || "";
-        const buyerName = session.customer_details?.name || "there";
-        const ship = session.shipping_details || session.customer_details;
-        const addr = ship?.address
-          ? `${ship.name || buyerName}\n${ship.address.line1}${ship.address.line2 ? ", " + ship.address.line2 : ""}\n` +
-            `${ship.address.city}, ${ship.address.state} ${ship.address.postal_code}\n${ship.address.country}`
-          : "(see Stripe for address)";
+        // Save the buyer + shipping on the record so it shows in the admin.
+        await updateAceo(aceoId, {
+          status: "sold",
+          soldAt: new Date().toISOString(),
+          sessionId: order.sessionId,
+          buyer: order.buyer,
+          shipping: order.shipping,
+          soldPrice: order.amount || aceo.price,
+        });
 
         // Tell Vivian she made a sale.
         await sendSMS(

@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Star, Heart, BadgeCheck } from "lucide-react";
+import { Star, Heart, BadgeCheck, MapPin } from "lucide-react";
 import { site } from "@/lib/config";
+import UsDotMap from "@/components/UsDotMap";
 
 function Stars({ rating }) {
   return (
@@ -21,6 +22,7 @@ function Stars({ rating }) {
 
 export default function ReviewsPage() {
   const [reviews, setReviews] = useState(null); // null = loading
+  const [map, setMap] = useState(null); // { states, stateCount, orderCount }
 
   // leave-a-review form
   const [name, setName] = useState("");
@@ -40,6 +42,10 @@ export default function ReviewsPage() {
 
   useEffect(() => {
     load();
+    fetch("/api/insights", { cache: "no-store" })
+      .then((r) => r.json())
+      .then(setMap)
+      .catch(() => {});
   }, [load]);
 
   async function submit(e) {
@@ -75,6 +81,23 @@ export default function ReviewsPage() {
       <p className="mt-3 text-center text-plum/70">
         Reviews from customers and friends of the shop. ♥
       </p>
+
+      {/* where orders have shipped */}
+      {map && map.orderCount > 0 && (
+        <div className="card mt-10">
+          <div className="flex items-center justify-center gap-2">
+            <MapPin className="h-5 w-5 text-rose" />
+            <h2 className="font-display text-2xl text-grape">Spreading joy across the map</h2>
+          </div>
+          <p className="mt-1 text-center text-sm text-plum/60">
+            {map.orderCount} order{map.orderCount === 1 ? "" : "s"} shipped to{" "}
+            {map.stateCount} state{map.stateCount === 1 ? "" : "s"} and counting!
+          </p>
+          <div className="mx-auto mt-4 max-w-3xl">
+            <UsDotMap counts={map.states} />
+          </div>
+        </div>
+      )}
 
       {reviews === null && (
         <p className="mt-12 text-center text-plum/60">Loading reviews…</p>

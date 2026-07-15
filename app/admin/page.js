@@ -1,11 +1,10 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { RefreshCw, Ruler, User, Mountain, DollarSign, CreditCard, ImagePlus, Trash2, X, Star, MapPin, ExternalLink } from "lucide-react";
+import { RefreshCw, Ruler, User, Mountain, DollarSign, CreditCard, ImagePlus, Trash2, X, Star, ExternalLink } from "lucide-react";
 import { STATUSES, STATUS_LABELS, STAGES, STAGE_LABELS } from "@/lib/commissions";
 import { aceoPrice, mediums, backgrounds } from "@/lib/config";
 import { compressImage } from "@/lib/compressImage";
-import { STATE_TILES, STATE_NAMES } from "@/lib/usStates";
 
 const STATUS_COLOR = {
   pending: "bg-lilac text-plum",
@@ -226,7 +225,7 @@ export default function AdminPage() {
             ["preorders", "Pre-orders"],
             ["reviews", "Reviews"],
             ["money", "Money"],
-            ["insights", "Insights"],
+            ["insights", "Payments"],
           ].map(([v, label]) => (
             <button
               key={v}
@@ -1161,102 +1160,25 @@ function PreorderManager() {
 // Insights: a cute tile-grid map of where orders shipped, plus a live view
 // of Stripe payments received (so she never has to open the Stripe site).
 function InsightsManager() {
-  const [ins, setIns] = useState(null);
   const [stripe, setStripe] = useState(null);
 
   const load = useCallback(async () => {
-    const [a, b] = await Promise.all([
-      fetch("/api/admin/insights", { cache: "no-store" }),
-      fetch("/api/admin/stripe", { cache: "no-store" }),
-    ]);
-    if (a.ok) setIns(await a.json());
+    const b = await fetch("/api/admin/stripe", { cache: "no-store" });
     if (b.ok) setStripe(await b.json());
   }, []);
   useEffect(() => {
     load();
   }, [load]);
 
-  const states = ins?.states || {};
-  const max = Math.max(1, ...Object.values(states));
   const fmt = (n) => `$${(Math.round(n * 100) / 100).toFixed(2)}`;
-
-  // Rose (#8c64bd) tile, darker the more orders.
-  const tileStyle = (code) => {
-    const [row, col] = STATE_TILES[code];
-    const n = states[code] || 0;
-    const base = { gridRow: row + 1, gridColumn: col + 1 };
-    if (n > 0) {
-      const a = 0.4 + 0.6 * (n / max);
-      return { ...base, backgroundColor: `rgba(140,100,189,${a})`, color: "#fff" };
-    }
-    return base;
-  };
 
   return (
     <div className="mt-6 space-y-8">
       <div className="flex items-center justify-between">
-        <h2 className="font-display text-2xl text-grape">Insights</h2>
+        <h2 className="font-display text-2xl text-grape">Payments</h2>
         <button onClick={load} className="btn-secondary !py-2 text-sm">
           <RefreshCw className="h-4 w-4" /> Refresh
         </button>
-      </div>
-
-      {/* map */}
-      <div className="card">
-        <div className="flex items-center gap-2">
-          <MapPin className="h-5 w-5 text-rose" />
-          <h3 className="font-display text-xl text-grape">Where your orders ship</h3>
-        </div>
-        <p className="mt-1 text-sm text-plum/60">
-          {ins
-            ? `${ins.orderCount} order${ins.orderCount === 1 ? "" : "s"} across ${ins.stateCount} state${ins.stateCount === 1 ? "" : "s"}.`
-            : "Loading…"}
-        </p>
-
-        <div
-          className="mx-auto mt-5 grid w-full max-w-2xl gap-1.5"
-          style={{ gridTemplateColumns: "repeat(11, 1fr)" }}
-        >
-          {Object.keys(STATE_TILES).map((code) => {
-            const n = states[code] || 0;
-            return (
-              <div
-                key={code}
-                title={`${STATE_NAMES[code]}${n ? `: ${n} order${n === 1 ? "" : "s"}` : ""}`}
-                style={tileStyle(code)}
-                className={`flex aspect-square flex-col items-center justify-center rounded-md text-[9px] font-bold leading-none ${
-                  n > 0 ? "" : "bg-lilac/50 text-plum/35"
-                }`}
-              >
-                <span>{code}</span>
-                {n > 0 && <span className="mt-0.5 text-[11px]">{n}</span>}
-              </div>
-            );
-          })}
-        </div>
-
-        {/* state list */}
-        {ins && ins.stateCount > 0 && (
-          <div className="mt-5 flex flex-wrap justify-center gap-2">
-            {Object.entries(states)
-              .sort((a, b) => b[1] - a[1])
-              .map(([code, n]) => (
-                <span key={code} className="rounded-full bg-petal/60 px-3 py-1 text-xs font-semibold text-grape">
-                  {STATE_NAMES[code]} · {n}
-                </span>
-              ))}
-          </div>
-        )}
-        {ins?.unmapped > 0 && (
-          <p className="mt-3 text-center text-xs text-plum/50">
-            ({ins.unmapped} {ins.unmapped === 1 ? "order" : "orders"} had a state we couldn&apos;t place on the map.)
-          </p>
-        )}
-        {ins && ins.orderCount === 0 && (
-          <p className="mt-3 text-center text-sm text-plum/60">
-            No shipped orders yet — states will light up as sales come in.
-          </p>
-        )}
       </div>
 
       {/* stripe payments */}

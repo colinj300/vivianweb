@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { RefreshCw, Ruler, User, Mountain, DollarSign, CreditCard, ImagePlus, Trash2, X, Star } from "lucide-react";
+import { RefreshCw, Ruler, User, Mountain, DollarSign, CreditCard, ImagePlus, Trash2, X, Star, MapPin, ExternalLink } from "lucide-react";
 import { STATUSES, STATUS_LABELS, STAGES, STAGE_LABELS } from "@/lib/commissions";
 import { aceoPrice, mediums, backgrounds } from "@/lib/config";
 import { compressImage } from "@/lib/compressImage";
+import { STATE_TILES, STATE_NAMES } from "@/lib/usStates";
 
 const STATUS_COLOR = {
   pending: "bg-lilac text-plum",
@@ -218,18 +219,19 @@ export default function AdminPage() {
   return (
     <div className="mx-auto max-w-5xl px-5 py-12">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="inline-flex rounded-full border-2 border-petal bg-white/60 p-1">
+        <div className="flex max-w-full gap-1 overflow-x-auto rounded-full border-2 border-petal bg-white/60 p-1">
           {[
             ["commissions", "Commissions"],
             ["aceos", "ACEO Shop"],
             ["preorders", "Pre-orders"],
             ["reviews", "Reviews"],
             ["money", "Money"],
+            ["insights", "Insights"],
           ].map(([v, label]) => (
             <button
               key={v}
               onClick={() => setView(v)}
-              className={`rounded-full px-4 py-1.5 text-sm font-bold transition ${
+              className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-bold transition ${
                 view === v ? "bg-rose text-white shadow-soft" : "text-grape hover:bg-petal/60"
               }`}
             >
@@ -253,6 +255,7 @@ export default function AdminPage() {
       {view === "preorders" && <PreorderManager />}
       {view === "reviews" && <ReviewsManager />}
       {view === "money" && <MoneyManager />}
+      {view === "insights" && <InsightsManager />}
       {view === "commissions" && (
       <>
       <h1 className="sr-only">Commissions</h1>
@@ -1150,6 +1153,196 @@ function PreorderManager() {
             )}
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+// Insights: a cute tile-grid map of where orders shipped, plus a live view
+// of Stripe payments received (so she never has to open the Stripe site).
+function InsightsManager() {
+  const [ins, setIns] = useState(null);
+  const [stripe, setStripe] = useState(null);
+
+  const load = useCallback(async () => {
+    const [a, b] = await Promise.all([
+      fetch("/api/admin/insights", { cache: "no-store" }),
+      fetch("/api/admin/stripe", { cache: "no-store" }),
+    ]);
+    if (a.ok) setIns(await a.json());
+    if (b.ok) setStripe(await b.json());
+  }, []);
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const states = ins?.states || {};
+  const max = Math.max(1, ...Object.values(states));
+  const fmt = (n) => `$${(Math.round(n * 100) / 100).toFixed(2)}`;
+
+  // Rose (#8c64bd) tile, darker the more orders.
+  const tileStyle = (code) => {
+    const [row, col] = STATE_TILES[code];
+    const n = states[code] || 0;
+    const base = { gridRow: row + 1, gridColumn: col + 1 };
+    if (n > 0) {
+      const a = 0.4 + 0.6 * (n / max);
+      return { ...base, backgroundColor: `rgba(140,100,189,${a})`, color: "#fff" };
+    }
+    return base;
+  };
+
+  return (
+    <div className="mt-6 space-y-8">
+      <div className="flex items-center justify-between">
+        <h2 className="font-display text-2xl text-grape">Insights</h2>
+        <button onClick={load} className="btn-secondary !py-2 text-sm">
+          <RefreshCw className="h-4 w-4" /> Refresh
+        </button>
+      </div>
+
+      {/* map */}
+      <div className="card">
+        <div className="flex items-center gap-2">
+          <MapPin className="h-5 w-5 text-rose" />
+          <h3 className="font-display text-xl text-grape">Where your orders ship</h3>
+        </div>
+        <p className="mt-1 text-sm text-plum/60">
+          {ins
+            ? `${ins.orderCount} order${ins.orderCount === 1 ? "" : "s"} across ${ins.stateCount} state${ins.stateCount === 1 ? "" : "s"}.`
+            : "Loading…"}
+        </p>
+
+        <div
+          className="mx-auto mt-5 grid w-full max-w-2xl gap-1.5"
+          style={{ gridTemplateColumns: "repeat(11, 1fr)" }}
+        >
+          {Object.keys(STATE_TILES).map((code) => {
+            const n = states[code] || 0;
+            return (
+              <div
+                key={code}
+                title={`${STATE_NAMES[code]}${n ? `: ${n} order${n === 1 ? "" : "s"}` : ""}`}
+                style={tileStyle(code)}
+                className={`flex aspect-square flex-col items-center justify-center rounded-md text-[9px] font-bold leading-none ${
+                  n > 0 ? "" : "bg-lilac/50 text-plum/35"
+                }`}
+              >
+                <span>{code}</span>
+                {n > 0 && <span className="mt-0.5 text-[11px]">{n}</span>}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* state list */}
+        {ins && ins.stateCount > 0 && (
+          <div className="mt-5 flex flex-wrap justify-center gap-2">
+            {Object.entries(states)
+              .sort((a, b) => b[1] - a[1])
+              .map(([code, n]) => (
+                <span key={code} className="rounded-full bg-petal/60 px-3 py-1 text-xs font-semibold text-grape">
+                  {STATE_NAMES[code]} · {n}
+                </span>
+              ))}
+          </div>
+        )}
+        {ins?.unmapped > 0 && (
+          <p className="mt-3 text-center text-xs text-plum/50">
+            ({ins.unmapped} {ins.unmapped === 1 ? "order" : "orders"} had a state we couldn&apos;t place on the map.)
+          </p>
+        )}
+        {ins && ins.orderCount === 0 && (
+          <p className="mt-3 text-center text-sm text-plum/60">
+            No shipped orders yet — states will light up as sales come in.
+          </p>
+        )}
+      </div>
+
+      {/* stripe payments */}
+      <div className="card">
+        <div className="flex items-center gap-2">
+          <CreditCard className="h-5 w-5 text-rose" />
+          <h3 className="font-display text-xl text-grape">Stripe payments</h3>
+          {stripe?.connected && stripe?.dashboardUrl && (
+            <a
+              href={stripe.dashboardUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="ml-auto flex items-center gap-1 text-xs font-semibold text-grape underline"
+            >
+              Open in Stripe <ExternalLink className="h-3 w-3" />
+            </a>
+          )}
+        </div>
+
+        {stripe === null ? (
+          <p className="mt-3 text-plum/60">Loading…</p>
+        ) : !stripe.connected ? (
+          <p className="mt-3 text-sm text-plum/60">
+            Stripe isn&apos;t connected yet. Add your <code>STRIPE_SECRET_KEY</code> in Vercel to see
+            payments here.
+          </p>
+        ) : stripe.error ? (
+          <p className="mt-3 text-sm text-rose">{stripe.error}</p>
+        ) : (
+          <>
+            {!stripe.live && (
+              <p className="mt-2 inline-block rounded-full bg-lilac px-3 py-0.5 text-xs font-semibold text-plum/70">
+                Test mode
+              </p>
+            )}
+            <div className="mt-3 grid gap-4 sm:grid-cols-2">
+              <div className="rounded-2xl bg-grape/5 p-4 text-center">
+                <div className="font-display text-3xl text-grape">{fmt(stripe.available)}</div>
+                <div className="text-sm text-plum/70">available balance</div>
+              </div>
+              <div className="rounded-2xl bg-lilac/40 p-4 text-center">
+                <div className="font-display text-3xl text-plum/70">{fmt(stripe.pending)}</div>
+                <div className="text-sm text-plum/70">pending</div>
+              </div>
+            </div>
+
+            <div className="mt-5 space-y-2">
+              {stripe.payments.length === 0 && (
+                <p className="text-center text-sm text-plum/60">No payments yet.</p>
+              )}
+              {stripe.payments.map((p) => (
+                <div
+                  key={p.id}
+                  className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-2xl border border-petal/60 bg-white/70 px-4 py-2.5 text-sm"
+                >
+                  <span className="w-20 shrink-0 text-xs text-plum/50">
+                    {new Date(p.created).toLocaleDateString()}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate text-plum/80">
+                    {p.name || p.email || p.description || "Payment"}
+                    {p.description && (p.name || p.email) ? (
+                      <span className="text-plum/50"> · {p.description}</span>
+                    ) : null}
+                  </span>
+                  {p.refunded ? (
+                    <span className="rounded-full bg-plum/15 px-2 py-0.5 text-xs font-semibold text-plum/60">
+                      refunded
+                    </span>
+                  ) : p.amountRefunded > 0 ? (
+                    <span className="rounded-full bg-plum/15 px-2 py-0.5 text-xs font-semibold text-plum/60">
+                      partial refund
+                    </span>
+                  ) : null}
+                  <span
+                    className={`w-20 shrink-0 text-right font-bold ${
+                      p.refunded ? "text-plum/40 line-through" : "text-grape"
+                    }`}
+                  >
+                    {fmt(p.amount)}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <p className="mt-3 text-xs text-plum/50">Showing your most recent payments.</p>
+          </>
+        )}
       </div>
     </div>
   );

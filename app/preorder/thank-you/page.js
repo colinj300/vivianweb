@@ -33,7 +33,7 @@ function ThankYouInner() {
           If you were charged, don&apos;t worry — your pre-order is safe. Reach out and
           I&apos;ll confirm it for you.
         </p>
-        <Link href="/preorder" className="btn-primary mt-6">Back to the pre-order</Link>
+        <Link href="/shop" className="btn-primary mt-6">Back to the shop</Link>
       </div>
     );
   }
@@ -49,7 +49,7 @@ function ThankYouInner() {
       <p className="mt-2 text-sm text-plum/60">
         It ships once we hit our goal — and if we don&apos;t, you&apos;ll be fully refunded. 💜
       </p>
-      <Link href="/preorder" className="btn-primary mt-6">See the pre-order progress</Link>
+      <Link href="/shop" className="btn-primary mt-6">See more in the shop</Link>
     </div>
   );
 }

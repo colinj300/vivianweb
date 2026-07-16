@@ -58,7 +58,7 @@ export async function POST(req) {
       shipping_address_collection: { allowed_countries: ["US", "CA"] },
       metadata: { kind: "preorder", title: preorder.title, quantity: String(qty) },
       success_url: `${origin}/preorder/thank-you?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/preorder`,
+      cancel_url: `${origin}/shop`,
     });
 
     return NextResponse.json({ url: session.url });

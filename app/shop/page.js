@@ -2,13 +2,27 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Flower2, ShoppingBag, Sticker, ArrowRight } from "lucide-react";
+import { Flower2, ShoppingBag } from "lucide-react";
+import PreorderCard from "@/components/PreorderCard";
+
+function CategoryHeading({ children, count }) {
+  return (
+    <div className="mb-4 flex items-center gap-3">
+      <h2 className="font-display text-xl text-grape">{children}</h2>
+      {count != null && (
+        <span className="rounded-full bg-petal/60 px-2 py-0.5 text-xs font-semibold text-grape">
+          {count}
+        </span>
+      )}
+      <span className="h-px flex-1 bg-petal/70" />
+    </div>
+  );
+}
 
 export default function ShopPage() {
   const [aceos, setAceos] = useState(null);
   const [busyId, setBusyId] = useState(null);
   const [error, setError] = useState("");
-  const [pre, setPre] = useState(null);
 
   async function load() {
     const res = await fetch("/api/shop/aceos", { cache: "no-store" });
@@ -17,10 +31,6 @@ export default function ShopPage() {
   }
   useEffect(() => {
     load();
-    fetch("/api/preorder", { cache: "no-store" })
-      .then((r) => r.json())
-      .then((d) => setPre(d.active ? d : null))
-      .catch(() => {});
   }, []);
 
   async function buy(id) {
@@ -51,103 +61,83 @@ export default function ShopPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-5 py-16">
-      <h1 className="section-title text-center">ACEO Shop</h1>
+      <h1 className="section-title text-center">Shop</h1>
       <p className="mt-3 text-center text-plum/70">
-        Tiny 2.5&quot; × 3.5&quot; hand-painted originals — one of a kind. Once
-        it&apos;s gone, it&apos;s gone!
+        Little bits of hand-made art to take home. ♥
       </p>
-
-      {/* sticker pre-order banner */}
-      {pre && (
-        <Link
-          href="/preorder"
-          className="mt-8 flex flex-wrap items-center gap-4 rounded-3xl border-2 border-bubblegum bg-gradient-to-r from-lilac/70 to-petal/50 p-5 transition hover:shadow-soft"
-        >
-          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-rose text-white">
-            <Sticker className="h-6 w-6" strokeWidth={1.75} />
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className="font-display text-xl text-grape">
-              Pre-order: {pre.title}
-            </p>
-            <p className="text-sm text-plum/70">
-              {pre.open
-                ? `Pay now, ships by ${pre.shipBy} · ${pre.count}/${pre.goal} pre-ordered`
-                : pre.met
-                ? "Funded! Pre-orders closed 🎉"
-                : "This drop has ended"}
-            </p>
-          </div>
-          <span className="btn-primary !py-2 text-sm">
-            {pre.open ? "Pre-order now" : "See details"} <ArrowRight className="h-4 w-4" />
-          </span>
-        </Link>
-      )}
 
       {error && (
         <p className="mt-5 text-center text-sm font-semibold text-rose">{error}</p>
       )}
 
-      {aceos === null ? (
-        <p className="mt-12 text-center text-plum/50">Loading…</p>
-      ) : available.length === 0 && sold.length === 0 ? (
-        <div className="mt-12 text-center">
-          <Flower2 className="mx-auto h-12 w-12 text-lavender" strokeWidth={1.5} />
-          <p className="mt-3 text-plum/70">
-            No ACEOs are listed right now — check back soon!
-          </p>
-          <Link href="/commissions" className="btn-primary mt-6">
-            Or commission a custom piece
-          </Link>
-        </div>
-      ) : (
-        <>
-          <div className="mt-12 grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-4">
-            {available.map((a) => (
-              <div key={a.id} className="card flex flex-col p-3">
-                <div className="overflow-hidden rounded-xl border-2 border-petal" style={{ aspectRatio: "2.5 / 3.5" }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={a.imageUrl} alt={a.title} className="h-full w-full object-cover" />
-                </div>
-                <h3 className="mt-3 text-center font-plaque text-lg text-plum">{a.title}</h3>
-                <p className="text-center font-semibold text-rose">${a.price}</p>
-                <button
-                  onClick={() => buy(a.id)}
-                  disabled={busyId === a.id}
-                  className="btn-primary mt-2 w-full !py-2 text-sm disabled:opacity-60"
-                >
-                  <ShoppingBag className="h-4 w-4" />
-                  {busyId === a.id ? "…" : "Buy"}
-                </button>
-              </div>
-            ))}
-          </div>
+      {/* Stickers */}
+      <section className="mt-12">
+        <CategoryHeading>Stickers</CategoryHeading>
+        <PreorderCard />
+      </section>
 
-          {sold.length > 0 && (
-            <>
-              <h2 className="mt-14 text-center font-display text-2xl text-grape">
-                Recently sold ♥
-              </h2>
-              <div className="mt-6 grid grid-cols-3 gap-4 sm:grid-cols-4 lg:grid-cols-6">
-                {sold.map((a) => (
-                  <div key={a.id} className="relative">
-                    <div
-                      className="overflow-hidden rounded-xl border-2 border-petal grayscale"
-                      style={{ aspectRatio: "2.5 / 3.5" }}
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={a.imageUrl} alt={a.title} className="h-full w-full object-cover opacity-70" />
-                    </div>
-                    <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/90 px-3 py-1 text-xs font-bold text-grape">
-                      Sold
-                    </span>
+      {/* ACEOs */}
+      <section className="mt-12">
+        <CategoryHeading count={aceos ? available.length : undefined}>ACEOs</CategoryHeading>
+        <p className="-mt-2 mb-5 text-sm text-plum/60">
+          Tiny 2.5&quot; × 3.5&quot; hand-painted originals — one of a kind. Once it&apos;s gone,
+          it&apos;s gone!
+        </p>
+
+        {aceos === null ? (
+          <p className="text-center text-plum/50">Loading…</p>
+        ) : available.length === 0 && sold.length === 0 ? (
+          <div className="rounded-3xl border-2 border-dashed border-petal bg-white/50 p-8 text-center">
+            <Flower2 className="mx-auto h-10 w-10 text-lavender" strokeWidth={1.5} />
+            <p className="mt-3 text-plum/70">No ACEOs are listed right now — check back soon!</p>
+            <Link href="/commissions" className="btn-primary mt-5">
+              Or commission a custom piece
+            </Link>
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-4">
+              {available.map((a) => (
+                <div key={a.id} className="card flex flex-col p-3">
+                  <div className="overflow-hidden rounded-xl border-2 border-petal" style={{ aspectRatio: "2.5 / 3.5" }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={a.imageUrl} alt={a.title} className="h-full w-full object-cover" />
                   </div>
-                ))}
-              </div>
-            </>
-          )}
-        </>
-      )}
+                  <h3 className="mt-3 text-center font-plaque text-lg text-plum">{a.title}</h3>
+                  <p className="text-center font-semibold text-rose">${a.price}</p>
+                  <button
+                    onClick={() => buy(a.id)}
+                    disabled={busyId === a.id}
+                    className="btn-primary mt-2 w-full !py-2 text-sm disabled:opacity-60"
+                  >
+                    <ShoppingBag className="h-4 w-4" />
+                    {busyId === a.id ? "…" : "Buy"}
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {sold.length > 0 && (
+              <>
+                <h3 className="mt-10 text-center font-display text-lg text-grape">Recently sold ♥</h3>
+                <div className="mt-4 grid grid-cols-3 gap-4 sm:grid-cols-4 lg:grid-cols-6">
+                  {sold.map((a) => (
+                    <div key={a.id} className="relative">
+                      <div className="overflow-hidden rounded-xl border-2 border-petal grayscale" style={{ aspectRatio: "2.5 / 3.5" }}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={a.imageUrl} alt={a.title} className="h-full w-full object-cover opacity-70" />
+                      </div>
+                      <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/90 px-3 py-1 text-xs font-bold text-grape">
+                        Sold
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </>
+        )}
+      </section>
     </div>
   );
 }

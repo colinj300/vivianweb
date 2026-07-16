@@ -9,7 +9,6 @@ const links = [
   { href: "/", label: "Home" },
   { href: "/gallery", label: "Gallery" },
   { href: "/shop", label: "Shop" },
-  { href: "/preorder", label: "Pre-order" },
   { href: "/reviews", label: "Reviews" },
   { href: "/track", label: "Check Order" },
   { href: "/about", label: "About" },

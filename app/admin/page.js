@@ -1699,6 +1699,7 @@ function AddCommission({ onAdded }) {
 
 function AceoManager() {
   const [aceos, setAceos] = useState(null);
+  const [origs, setOrigs] = useState(null);
   const [title, setTitle] = useState("");
   const [price, setPrice] = useState(aceoPrice);
   const [imageUrl, setImageUrl] = useState("");
@@ -1708,12 +1709,32 @@ function AceoManager() {
   const fileRef = useRef(null);
 
   async function load() {
-    const res = await fetch("/api/admin/aceos", { cache: "no-store" });
-    if (res.ok) setAceos((await res.json()).aceos);
+    const [a, o] = await Promise.all([
+      fetch("/api/admin/aceos", { cache: "no-store" }),
+      fetch("/api/admin/originals", { cache: "no-store" }),
+    ]);
+    if (a.ok) setAceos((await a.json()).aceos);
+    if (o.ok) setOrigs((await o.json()).originals);
   }
   useEffect(() => {
     load();
   }, []);
+
+  async function fetchOrigBuyer(id) {
+    setBusy(true);
+    setMsg("");
+    const res = await fetch("/api/admin/originals", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, action: "fetchBuyer" }),
+    });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      setMsg(d.error || "Couldn't fetch buyer info from Stripe.");
+    }
+    await load();
+    setBusy(false);
+  }
 
   async function onFile(e) {
     const file = e.target.files?.[0];
@@ -1947,6 +1968,88 @@ function AceoManager() {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* original paintings (listed in config; sold info from Stripe) */}
+      {origs && origs.length > 0 && (
+        <div className="mt-10">
+          <h2 className="font-display text-2xl text-grape">Original paintings</h2>
+          <p className="mt-1 text-sm text-plum/60">
+            Listed in the shop from config. When one sells, the buyer + address show here.
+          </p>
+          <div className="mt-4 space-y-4">
+            {origs.map((o) => {
+              const s = o.sale;
+              return (
+                <div key={o.id} className="card flex flex-wrap gap-4">
+                  <div className="h-24 w-[68px] shrink-0 overflow-hidden rounded-xl border-2 border-petal">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={o.image}
+                      alt={o.title}
+                      className={`h-full w-full object-cover ${o.status === "sold" ? "grayscale" : ""}`}
+                    />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                      <span className="font-semibold text-grape">{o.title}</span>
+                      <span className="text-sm text-rose">${s?.soldPrice ?? o.price}</span>
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+                          o.status === "sold" ? "bg-plum/15 text-plum/70" : "bg-grape/10 text-grape"
+                        }`}
+                      >
+                        {o.status === "sold" ? "sold" : "available"}
+                      </span>
+                    </div>
+                    {s && (s.buyer?.name || s.buyer?.email) && (
+                      <p className="mt-0.5 text-sm text-plum/80">
+                        {s.buyer?.name}
+                        {s.buyer?.email && (
+                          <>
+                            {" · "}
+                            <a href={`mailto:${s.buyer.email}`} className="text-rose underline">
+                              {s.buyer.email}
+                            </a>
+                          </>
+                        )}
+                      </p>
+                    )}
+                    {o.status === "sold" &&
+                      (s?.shipping ? (
+                        <div className="mt-2 rounded-xl border border-bubblegum/50 bg-white/70 p-3 text-sm">
+                          <p className="whitespace-pre-line text-plum/80">
+                            {`${s.shipping.name}\n${s.shipping.line1}${s.shipping.line2 ? ", " + s.shipping.line2 : ""}\n${s.shipping.city}, ${s.shipping.state} ${s.shipping.zip}\n${s.shipping.country}`}
+                          </p>
+                          <button
+                            onClick={() =>
+                              navigator.clipboard?.writeText(
+                                `${s.shipping.name}\n${s.shipping.line1}${s.shipping.line2 ? "\n" + s.shipping.line2 : ""}\n${s.shipping.city}, ${s.shipping.state} ${s.shipping.zip}\n${s.shipping.country}`
+                              )
+                            }
+                            className="mt-1 rounded-full border border-bubblegum px-3 py-0.5 text-xs font-semibold text-grape hover:bg-petal"
+                          >
+                            Copy address
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                          <span className="text-sm text-plum/60">No address saved for this sale.</span>
+                          <button
+                            disabled={busy}
+                            onClick={() => fetchOrigBuyer(o.id)}
+                            className="rounded-full bg-grape px-3 py-1 text-xs font-semibold text-white hover:bg-grape/85 disabled:opacity-50"
+                          >
+                            {busy ? "…" : "Fetch address from Stripe"}
+                          </button>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

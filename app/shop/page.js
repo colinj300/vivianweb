@@ -21,26 +21,31 @@ function CategoryHeading({ children, count }) {
 
 export default function ShopPage() {
   const [aceos, setAceos] = useState(null);
+  const [originals, setOriginals] = useState(null);
   const [busyId, setBusyId] = useState(null);
   const [error, setError] = useState("");
 
   async function load() {
-    const res = await fetch("/api/shop/aceos", { cache: "no-store" });
-    const d = await res.json();
-    setAceos(d.aceos || []);
+    const [a, o] = await Promise.all([
+      fetch("/api/shop/aceos", { cache: "no-store" }),
+      fetch("/api/shop/originals", { cache: "no-store" }),
+    ]);
+    setAceos((await a.json()).aceos || []);
+    setOriginals((await o.json()).originals || []);
   }
   useEffect(() => {
     load();
   }, []);
 
-  async function buy(id) {
+  // `body` is { aceoId } or { originalId }
+  async function checkout(id, body) {
     setError("");
     setBusyId(id);
     try {
       const res = await fetch("/api/shop/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ aceoId: id }),
+        body: JSON.stringify(body),
       });
       const d = await res.json();
       if (res.ok && d.url) {
@@ -55,6 +60,8 @@ export default function ShopPage() {
       setBusyId(null);
     }
   }
+  const buy = (id) => checkout(id, { aceoId: id });
+  const buyOriginal = (id) => checkout(id, { originalId: id });
 
   const available = (aceos || []).filter((a) => a.status === "available");
   const sold = (aceos || []).filter((a) => a.status === "sold");
@@ -68,6 +75,57 @@ export default function ShopPage() {
 
       {error && (
         <p className="mt-5 text-center text-sm font-semibold text-rose">{error}</p>
+      )}
+
+      {/* Originals */}
+      {originals && originals.length > 0 && (
+        <section className="mt-12">
+          <CategoryHeading count={originals.filter((o) => o.status === "available").length}>
+            Originals
+          </CategoryHeading>
+          <div className="grid gap-6 sm:grid-cols-2">
+            {originals.map((o) => (
+              <div key={o.id} className="card flex flex-col gap-4 sm:flex-row">
+                <div className="relative mx-auto w-40 shrink-0 overflow-hidden rounded-2xl border-2 border-petal">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={o.image}
+                    alt={o.title}
+                    className={`w-full object-cover ${o.status === "sold" ? "opacity-60 grayscale" : ""}`}
+                  />
+                  {o.status === "sold" && (
+                    <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/90 px-3 py-1 text-xs font-bold text-grape">
+                      Sold
+                    </span>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <h3 className="font-display text-2xl text-grape">{o.title}</h3>
+                    <span className="font-display text-2xl text-rose">${o.price}</span>
+                  </div>
+                  {o.size && <p className="text-sm text-plum/60">{o.size} · original</p>}
+                  {o.description && <p className="mt-2 text-sm text-plum/75">{o.description}</p>}
+                  <p className="mt-2 text-xs font-semibold text-grape">Shipping included</p>
+                  {o.status === "available" ? (
+                    <button
+                      onClick={() => buyOriginal(o.id)}
+                      disabled={busyId === o.id}
+                      className="btn-primary mt-3 w-full disabled:opacity-60"
+                    >
+                      <ShoppingBag className="h-4 w-4" />
+                      {busyId === o.id ? "…" : `Buy — $${o.price}`}
+                    </button>
+                  ) : (
+                    <p className="mt-3 rounded-2xl bg-lilac/40 p-2 text-center text-sm font-semibold text-plum/60">
+                      This original has found a home ♥
+                    </p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
       )}
 
       {/* Stickers */}

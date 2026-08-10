@@ -221,8 +221,7 @@ export default function AdminPage() {
         <div className="flex max-w-full gap-1 overflow-x-auto rounded-full border-2 border-petal bg-white/60 p-1">
           {[
             ["commissions", "Commissions"],
-            ["aceos", "ACEO Shop"],
-            ["preorders", "Pre-orders"],
+            ["aceos", "Shop"],
             ["reviews", "Reviews"],
             ["money", "Money"],
             ["insights", "Payments"],
@@ -251,7 +250,6 @@ export default function AdminPage() {
       </div>
 
       {view === "aceos" && <AceoManager />}
-      {view === "preorders" && <PreorderManager />}
       {view === "reviews" && <ReviewsManager />}
       {view === "money" && <MoneyManager />}
       {view === "insights" && <InsightsManager />}
@@ -896,267 +894,6 @@ function CommissionCard({ c, busy, onStatus, onStage, onPrice, onLink, onDelete,
   );
 }
 
-// Sticker pre-order dashboard: progress toward goal, listing photo, buyer
-// list, and the one-click "refund everyone" button if the goal is missed.
-function PreorderManager() {
-  const [d, setD] = useState(null);
-  const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState("");
-  const [uploading, setUploading] = useState(false);
-  const fileRef = useRef(null);
-
-  const load = useCallback(async () => {
-    const res = await fetch("/api/admin/preorders", { cache: "no-store" });
-    if (res.ok) setD(await res.json());
-  }, []);
-  useEffect(() => {
-    load();
-  }, [load]);
-
-  async function act(body, confirmMsg) {
-    if (confirmMsg && !confirm(confirmMsg)) return;
-    setBusy(true);
-    setMsg("");
-    const res = await fetch("/api/admin/preorders", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    const j = await res.json().catch(() => ({}));
-    if (res.ok) {
-      setD(j);
-      if (typeof j.refunded === "number") {
-        setMsg(
-          `Refunded ${j.refunded} order(s).` +
-            (j.failures?.length ? ` ${j.failures.length} failed — check Stripe.` : "")
-        );
-      }
-    } else {
-      setMsg(j.error || "Something went wrong.");
-    }
-    setBusy(false);
-  }
-
-  async function onFile(e) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
-    setMsg("");
-    try {
-      const compressed = await compressImage(file);
-      const fd = new FormData();
-      fd.append("file", compressed);
-      const res = await fetch("/api/upload", { method: "POST", body: fd });
-      const j = await res.json().catch(() => ({}));
-      if (res.ok && j.url) await act({ action: "setImage", image: j.url });
-      else setMsg(j.error || "Upload failed.");
-    } catch {
-      setMsg("Upload failed. Please try again.");
-    }
-    setUploading(false);
-    if (fileRef.current) fileRef.current.value = "";
-  }
-
-  if (d === null) return <p className="mt-6 text-plum/60">Loading…</p>;
-
-  const s = d.state;
-  const fmt = (n) => `$${(Math.round(n * 100) / 100).toFixed(2)}`;
-  const pct = Math.min(100, Math.round((s.count / s.goal) * 100));
-  const phaseLabel =
-    s.phase === "open" ? "Open" : s.phase === "funded" ? "Funded ✓" : "Goal missed";
-  const phaseColor =
-    s.phase === "open"
-      ? "bg-lilac text-plum/80"
-      : s.phase === "funded"
-      ? "bg-grape/15 text-grape"
-      : "bg-rose/15 text-rose";
-
-  return (
-    <div className="mt-6">
-      <div className="flex items-center justify-between">
-        <h2 className="font-display text-2xl text-grape">
-          Pre-orders — {d.product.title}
-        </h2>
-        <button onClick={load} className="btn-secondary !py-2 text-sm">
-          <RefreshCw className="h-4 w-4" /> Refresh
-        </button>
-      </div>
-      {!d.product.active && (
-        <p className="mt-1 text-sm font-semibold text-rose">
-          This pre-order is hidden from the site (set <code>active: true</code> in config.js to show it).
-        </p>
-      )}
-
-      {/* summary */}
-      <div className="mt-5 grid gap-4 sm:grid-cols-4">
-        <div className="card text-center">
-          <div className="font-display text-3xl text-grape">{s.count}/{s.goal}</div>
-          <div className="text-sm text-plum/70">pre-ordered</div>
-        </div>
-        <div className="card text-center">
-          <div className="font-display text-3xl text-rose">{fmt(d.revenue)}</div>
-          <div className="text-sm text-plum/70">collected</div>
-        </div>
-        <div className="card text-center">
-          <div className={`inline-block rounded-full px-3 py-1 text-sm font-bold ${phaseColor}`}>
-            {phaseLabel}
-          </div>
-          <div className="mt-1 text-xs text-plum/50">
-            deadline {d.product.deadline}
-          </div>
-        </div>
-        <div className="card text-center">
-          <div className="font-display text-3xl text-grape">{d.refundedCount}</div>
-          <div className="text-sm text-plum/70">refunded</div>
-        </div>
-      </div>
-
-      {/* progress bar */}
-      <div className="mt-4 h-4 overflow-hidden rounded-full bg-petal/60">
-        <div
-          className="h-full rounded-full bg-gradient-to-r from-bubblegum to-rose"
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-
-      {/* deadline-passed prompts */}
-      {s.phase === "failed" && (
-        <div className="mt-5 rounded-2xl border-2 border-rose/40 bg-rose/5 p-4">
-          <p className="font-semibold text-rose">
-            The deadline passed and you fell short ({s.count}/{s.goal}).
-          </p>
-          <p className="mt-1 text-sm text-plum/70">
-            Refund every buyer through Stripe in one click. Each person gets their money back
-            and an email letting them know.
-          </p>
-          <button
-            onClick={() =>
-              act(
-                { action: "refundAll" },
-                `Refund ALL ${s.count} paid pre-order(s) through Stripe? This can't be undone.`
-              )
-            }
-            disabled={busy}
-            className="mt-3 rounded-full bg-rose px-4 py-2 text-sm font-bold text-white hover:bg-rose/85 disabled:opacity-50"
-          >
-            Refund everyone
-          </button>
-        </div>
-      )}
-      {s.phase === "funded" && (
-        <div className="mt-5 rounded-2xl border-2 border-grape/30 bg-grape/5 p-4">
-          <p className="font-semibold text-grape">
-            You hit your goal! 🎉 Time to print and ship by {d.product.shipBy}.
-          </p>
-          <button
-            onClick={() => act({ action: "fulfillAll" }, "Mark all paid pre-orders as fulfilled/shipped?")}
-            disabled={busy}
-            className="mt-3 rounded-full bg-grape px-4 py-2 text-sm font-bold text-white hover:bg-grape/85 disabled:opacity-50"
-          >
-            Mark all as shipped
-          </button>
-        </div>
-      )}
-
-      {/* listing photo */}
-      <div className="mt-6 card">
-        <p className="font-semibold text-grape">Listing photo</p>
-        <p className="mt-1 text-sm text-plum/60">
-          This is what buyers see on the pre-order page. Upload the real sticker sheet photo.
-        </p>
-        <div className="mt-3 flex items-center gap-4">
-          <div className="h-24 w-24 overflow-hidden rounded-xl border-2 border-petal bg-lilac/40">
-            {d.image ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={d.image} alt="" className="h-full w-full object-cover" />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center text-plum/40">
-                <ImagePlus className="h-6 w-6" />
-              </div>
-            )}
-          </div>
-          <div>
-            <button
-              onClick={() => fileRef.current?.click()}
-              disabled={uploading}
-              className="btn-secondary !py-2 text-sm disabled:opacity-60"
-            >
-              {uploading ? "Uploading…" : d.image ? "Replace photo" : "Upload photo"}
-            </button>
-            <input ref={fileRef} type="file" accept="image/*" onChange={onFile} className="hidden" />
-          </div>
-        </div>
-      </div>
-
-      {msg && <p className="mt-4 rounded-xl bg-lilac/40 p-3 text-sm font-semibold text-plum/80">{msg}</p>}
-
-      {/* buyer list */}
-      <h3 className="mt-8 font-display text-xl text-grape">Buyers ({d.orders.length})</h3>
-      {d.orders.length === 0 && (
-        <p className="mt-3 text-center text-plum/60">No pre-orders yet.</p>
-      )}
-      <div className="mt-4 space-y-3">
-        {d.orders.map((o) => (
-          <div key={o.id} className="card">
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-              <span className="font-semibold text-grape">{o.name || "Buyer"}</span>
-              {o.email && (
-                <a href={`mailto:${o.email}`} className="text-sm text-rose underline">
-                  {o.email}
-                </a>
-              )}
-              <span className="text-sm text-plum/70">
-                ×{o.quantity} · {fmt(o.amount)}
-              </span>
-              <span
-                className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-                  o.status === "refunded"
-                    ? "bg-plum/15 text-plum/70"
-                    : o.status === "fulfilled"
-                    ? "bg-grape/15 text-grape"
-                    : "bg-lilac text-plum/80"
-                }`}
-              >
-                {o.status}
-              </span>
-              <span className="ml-auto text-xs text-plum/50">
-                {new Date(o.createdAt).toLocaleDateString()}
-              </span>
-            </div>
-            {o.shipping && (
-              <p className="mt-2 whitespace-pre-line text-xs text-plum/60">
-                {`${o.shipping.name}\n${o.shipping.line1}${o.shipping.line2 ? ", " + o.shipping.line2 : ""}\n${o.shipping.city}, ${o.shipping.state} ${o.shipping.zip} ${o.shipping.country}`}
-              </p>
-            )}
-            {(o.status === "paid" || o.status === "fulfilled") && (
-              <div className="mt-2 flex gap-2">
-                {o.status === "paid" && (
-                  <button
-                    disabled={busy}
-                    onClick={() => act({ action: "fulfill", id: o.id })}
-                    className="rounded-full border border-bubblegum px-3 py-1 text-xs font-semibold text-grape hover:bg-petal disabled:opacity-40"
-                  >
-                    Mark shipped
-                  </button>
-                )}
-                <button
-                  disabled={busy}
-                  onClick={() =>
-                    act({ action: "refund", id: o.id }, `Refund ${o.name || "this buyer"} (${fmt(o.amount)})?`)
-                  }
-                  className="rounded-full border border-rose/50 px-3 py-1 text-xs font-semibold text-rose hover:bg-rose/10 disabled:opacity-40"
-                >
-                  Refund
-                </button>
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 // Insights: a cute tile-grid map of where orders shipped, plus a live view
 // of Stripe payments received (so she never has to open the Stripe site).
 function InsightsManager() {
@@ -1452,8 +1189,10 @@ function MoneyManager() {
                 ? "Commission"
                 : e.source === "aceo"
                 ? "ACEO"
-                : e.source === "preorder"
-                ? "Pre-order"
+                : e.source === "original"
+                ? "Original"
+                : e.source === "sticker"
+                ? "Sticker"
                 : "Manual"}
               {e.estimated ? " · est." : ""}
             </span>
@@ -1697,11 +1436,17 @@ function AddCommission({ onAdded }) {
   );
 }
 
+
+// Shop manager — add/manage items of type ACEO, Sticker, or Original, and
+// see sold-order shipping addresses (plus sticker orders to fulfill).
 function AceoManager() {
   const [aceos, setAceos] = useState(null);
-  const [origs, setOrigs] = useState(null);
+  const [stickerOrders, setStickerOrders] = useState([]);
+  const [origs, setOrigs] = useState([]); // built-in (config) originals
+  const [type, setType] = useState("aceo"); // aceo | sticker | original
   const [title, setTitle] = useState("");
-  const [price, setPrice] = useState(aceoPrice);
+  const [price, setPrice] = useState("");
+  const [details, setDetails] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [uploading, setUploading] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -1713,28 +1458,16 @@ function AceoManager() {
       fetch("/api/admin/aceos", { cache: "no-store" }),
       fetch("/api/admin/originals", { cache: "no-store" }),
     ]);
-    if (a.ok) setAceos((await a.json()).aceos);
-    if (o.ok) setOrigs((await o.json()).originals);
+    if (a.ok) {
+      const d = await a.json();
+      setAceos(d.aceos || []);
+      setStickerOrders(d.stickerOrders || []);
+    }
+    if (o.ok) setOrigs((await o.json()).originals || []);
   }
   useEffect(() => {
     load();
   }, []);
-
-  async function fetchOrigBuyer(id) {
-    setBusy(true);
-    setMsg("");
-    const res = await fetch("/api/admin/originals", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, action: "fetchBuyer" }),
-    });
-    if (!res.ok) {
-      const d = await res.json().catch(() => ({}));
-      setMsg(d.error || "Couldn't fetch buyer info from Stripe.");
-    }
-    await load();
-    setBusy(false);
-  }
 
   async function onFile(e) {
     const file = e.target.files?.[0];
@@ -1759,15 +1492,17 @@ function AceoManager() {
   async function create() {
     setMsg("");
     if (!imageUrl) return setMsg("Upload a photo first.");
+    if (!title.trim()) return setMsg("Please add a name.");
     setBusy(true);
     const res = await fetch("/api/admin/aceos", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, price, imageUrl }),
+      body: JSON.stringify({ title, price, imageUrl, type, details }),
     });
     if (res.ok) {
       setTitle("");
-      setPrice(aceoPrice);
+      setPrice("");
+      setDetails("");
       setImageUrl("");
       await load();
     } else {
@@ -1810,13 +1545,74 @@ function AceoManager() {
     setBusy(false);
   }
 
-  const sold = (aceos || []).filter((a) => a.status === "sold");
+  const items = aceos || [];
+  const stickers = items.filter((a) => (a.type || "aceo") === "sticker");
+  const storeOriginals = items.filter((a) => a.type === "original");
+  const aceoItems = items.filter((a) => (a.type || "aceo") === "aceo");
+  const sold = [...aceoItems, ...storeOriginals].filter((a) => a.status === "sold");
+
+  const addr = (s) =>
+    `${s.name}\n${s.line1}${s.line2 ? ", " + s.line2 : ""}\n${s.city}, ${s.state} ${s.zip}\n${s.country}`;
+
+  const typeLabel = { aceo: "ACEO", sticker: "Sticker", original: "Original" };
+
+  // A small listing card for the grouped item lists.
+  function ItemCard({ a }) {
+    const kind = a.type || "aceo";
+    return (
+      <div className="card p-3">
+        <div className="overflow-hidden rounded-xl border-2 border-petal" style={{ aspectRatio: kind === "aceo" ? "2.5 / 3.5" : "1 / 1" }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={a.imageUrl}
+            alt={a.title}
+            className={`h-full w-full object-cover ${a.status === "sold" ? "opacity-60 grayscale" : ""}`}
+          />
+        </div>
+        <p className="mt-2 truncate text-center font-semibold text-grape">{a.title}</p>
+        <p className="text-center text-sm text-rose">${a.price}{kind !== "sticker" ? ` · ${a.status}` : ""}</p>
+        <div className="mt-2 flex justify-center gap-2">
+          {kind !== "sticker" && (
+            <button
+              disabled={busy}
+              onClick={() => setStatus(a.id, a.status === "sold" ? "available" : "sold")}
+              className="rounded-full border border-bubblegum px-3 py-1 text-xs font-semibold text-grape hover:bg-petal"
+            >
+              {a.status === "sold" ? "Mark available" : "Mark sold"}
+            </button>
+          )}
+          <button
+            disabled={busy}
+            onClick={() => remove(a.id)}
+            className="rounded-full border border-rose/40 px-2 py-1 text-xs text-rose hover:bg-rose/10"
+            aria-label="Delete"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mt-6">
       {/* create form */}
       <div className="card">
-        <h2 className="font-display text-2xl text-grape">Add an ACEO</h2>
+        <h2 className="font-display text-2xl text-grape">Add an item</h2>
+        <div className="mt-3 inline-flex rounded-full border-2 border-petal bg-white/60 p-1">
+          {["sticker", "original", "aceo"].map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => setType(t)}
+              className={`rounded-full px-4 py-1.5 text-sm font-bold transition ${
+                type === t ? "bg-rose text-white shadow-soft" : "text-grape hover:bg-petal/60"
+              }`}
+            >
+              {typeLabel[t]}
+            </button>
+          ))}
+        </div>
         <div className="mt-4 flex flex-wrap items-start gap-4">
           <button
             type="button"
@@ -1835,24 +1631,33 @@ function AceoManager() {
             )}
           </button>
           <input ref={fileRef} type="file" accept="image/*" onChange={onFile} className="hidden" />
-
           <div className="flex flex-1 flex-col gap-3">
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Title (e.g. Sleepy Cat)"
+              placeholder={type === "sticker" ? "Sticker name" : type === "original" ? "Painting name" : "ACEO title"}
               className="rounded-2xl border-2 border-petal/60 bg-white/70 p-3 text-plum focus:border-rose focus:outline-none"
             />
+            {(type === "original" || type === "sticker") && (
+              <textarea
+                value={details}
+                onChange={(e) => setDetails(e.target.value)}
+                rows={2}
+                placeholder={type === "original" ? "Details (size, medium, story…)" : "Details (size, finish… optional)"}
+                className="rounded-2xl border-2 border-petal/60 bg-white/70 p-3 text-sm text-plum focus:border-rose focus:outline-none"
+              />
+            )}
             <div className="flex items-center gap-2">
               <span className="text-plum/70">$</span>
               <input
                 type="number"
                 value={price}
                 onChange={(e) => setPrice(e.target.value)}
+                placeholder="price"
                 className="w-24 rounded-2xl border-2 border-petal/60 bg-white/70 p-3 text-plum focus:border-rose focus:outline-none"
               />
               <button onClick={create} disabled={busy || uploading} className="btn-primary !py-2 text-sm disabled:opacity-60">
-                Add listing
+                Add {typeLabel[type].toLowerCase()}
               </button>
             </div>
             {msg && <p className="text-sm font-semibold text-rose">{msg}</p>}
@@ -1860,52 +1665,43 @@ function AceoManager() {
         </div>
       </div>
 
-      {/* listings */}
-      <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-        {aceos === null && <p className="text-plum/50">Loading…</p>}
-        {aceos && aceos.length === 0 && <p className="text-plum/60">No listings yet.</p>}
-        {(aceos || []).map((a) => (
-          <div key={a.id} className="card p-3">
-            <div className="overflow-hidden rounded-xl border-2 border-petal" style={{ aspectRatio: "2.5 / 3.5" }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={a.imageUrl}
-                alt={a.title}
-                className={`h-full w-full object-cover ${a.status === "sold" ? "opacity-60 grayscale" : ""}`}
-              />
-            </div>
-            <p className="mt-2 truncate text-center font-semibold text-grape">{a.title}</p>
-            <p className="text-center text-sm text-rose">
-              ${a.price} · {a.status}
-            </p>
-            <div className="mt-2 flex justify-center gap-2">
-              <button
-                disabled={busy}
-                onClick={() => setStatus(a.id, a.status === "sold" ? "available" : "sold")}
-                className="rounded-full border border-bubblegum px-3 py-1 text-xs font-semibold text-grape hover:bg-petal"
-              >
-                {a.status === "sold" ? "Mark available" : "Mark sold"}
-              </button>
-              <button
-                disabled={busy}
-                onClick={() => remove(a.id)}
-                className="rounded-full border border-rose/40 px-2 py-1 text-xs text-rose hover:bg-rose/10"
-                aria-label="Delete"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
+      {aceos === null && <p className="mt-6 text-plum/50">Loading…</p>}
 
-      {/* sold orders — buyer + shipping address */}
+      {/* Stickers */}
+      {stickers.length > 0 && (
+        <div className="mt-8">
+          <h3 className="font-display text-xl text-grape">Stickers</h3>
+          <div className="mt-3 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+            {stickers.map((a) => <ItemCard key={a.id} a={a} />)}
+          </div>
+        </div>
+      )}
+
+      {/* Original paintings (admin-added) */}
+      {storeOriginals.length > 0 && (
+        <div className="mt-8">
+          <h3 className="font-display text-xl text-grape">Original paintings</h3>
+          <div className="mt-3 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+            {storeOriginals.map((a) => <ItemCard key={a.id} a={a} />)}
+          </div>
+        </div>
+      )}
+
+      {/* ACEOs */}
+      {aceoItems.length > 0 && (
+        <div className="mt-8">
+          <h3 className="font-display text-xl text-grape">ACEOs</h3>
+          <div className="mt-3 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+            {aceoItems.map((a) => <ItemCard key={a.id} a={a} />)}
+          </div>
+        </div>
+      )}
+
+      {/* Sold one-of-a-kind orders — buyer + shipping address */}
       {sold.length > 0 && (
         <div className="mt-10">
-          <h2 className="font-display text-2xl text-grape">Sold orders — ship these</h2>
-          <p className="mt-1 text-sm text-plum/60">
-            Buyer and shipping address for each sold ACEO, straight from Stripe.
-          </p>
+          <h2 className="font-display text-2xl text-grape">Sold — ship these</h2>
+          <p className="mt-1 text-sm text-plum/60">Buyer and shipping address for each sold ACEO / original.</p>
           <div className="mt-4 space-y-4">
             {sold.map((a) => (
               <div key={a.id} className="card flex flex-wrap gap-4">
@@ -1917,37 +1713,19 @@ function AceoManager() {
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                     <span className="font-semibold text-grape">{a.title}</span>
                     <span className="text-sm text-rose">${a.soldPrice ?? a.price}</span>
-                    {a.soldAt && (
-                      <span className="text-xs text-plum/50">
-                        sold {new Date(a.soldAt).toLocaleDateString()}
-                      </span>
-                    )}
+                    <span className="rounded-full bg-grape/10 px-2 py-0.5 text-xs font-semibold text-grape">{typeLabel[a.type || "aceo"]}</span>
                   </div>
                   {(a.buyer?.name || a.buyer?.email) && (
                     <p className="mt-0.5 text-sm text-plum/80">
                       {a.buyer?.name}
-                      {a.buyer?.email && (
-                        <>
-                          {" · "}
-                          <a href={`mailto:${a.buyer.email}`} className="text-rose underline">
-                            {a.buyer.email}
-                          </a>
-                        </>
-                      )}
+                      {a.buyer?.email && (<>{" · "}<a href={`mailto:${a.buyer.email}`} className="text-rose underline">{a.buyer.email}</a></>)}
                     </p>
                   )}
-
                   {a.shipping ? (
                     <div className="mt-2 rounded-xl border border-bubblegum/50 bg-white/70 p-3 text-sm">
-                      <p className="whitespace-pre-line text-plum/80">
-                        {`${a.shipping.name}\n${a.shipping.line1}${a.shipping.line2 ? ", " + a.shipping.line2 : ""}\n${a.shipping.city}, ${a.shipping.state} ${a.shipping.zip}\n${a.shipping.country}`}
-                      </p>
+                      <p className="whitespace-pre-line text-plum/80">{addr(a.shipping)}</p>
                       <button
-                        onClick={() =>
-                          navigator.clipboard?.writeText(
-                            `${a.shipping.name}\n${a.shipping.line1}${a.shipping.line2 ? "\n" + a.shipping.line2 : ""}\n${a.shipping.city}, ${a.shipping.state} ${a.shipping.zip}\n${a.shipping.country}`
-                          )
-                        }
+                        onClick={() => navigator.clipboard?.writeText(addr(a.shipping))}
                         className="mt-1 rounded-full border border-bubblegum px-3 py-0.5 text-xs font-semibold text-grape hover:bg-petal"
                       >
                         Copy address
@@ -1956,11 +1734,7 @@ function AceoManager() {
                   ) : (
                     <div className="mt-2 flex flex-wrap items-center gap-2">
                       <span className="text-sm text-plum/60">No address saved for this sale.</span>
-                      <button
-                        disabled={busy}
-                        onClick={() => fetchBuyer(a.id)}
-                        className="rounded-full bg-grape px-3 py-1 text-xs font-semibold text-white hover:bg-grape/85 disabled:opacity-50"
-                      >
+                      <button disabled={busy} onClick={() => fetchBuyer(a.id)} className="rounded-full bg-grape px-3 py-1 text-xs font-semibold text-white hover:bg-grape/85 disabled:opacity-50">
                         {busy ? "…" : "Fetch address from Stripe"}
                       </button>
                     </div>
@@ -1972,13 +1746,42 @@ function AceoManager() {
         </div>
       )}
 
-      {/* original paintings (listed in config; sold info from Stripe) */}
-      {origs && origs.length > 0 && (
+      {/* Sticker orders to fulfill */}
+      {stickerOrders.length > 0 && (
         <div className="mt-10">
-          <h2 className="font-display text-2xl text-grape">Original paintings</h2>
-          <p className="mt-1 text-sm text-plum/60">
-            Listed in the shop from config. When one sells, the buyer + address show here.
-          </p>
+          <h2 className="font-display text-2xl text-grape">Sticker orders — ship these</h2>
+          <div className="mt-4 space-y-3">
+            {stickerOrders.map((s) => (
+              <div key={s.id} className="card">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <span className="font-semibold text-grape">{s.title}</span>
+                  <span className="text-sm text-rose">${s.amount}</span>
+                  {s.buyer?.name && <span className="text-sm text-plum/80">{s.buyer.name}</span>}
+                  {s.buyer?.email && <a href={`mailto:${s.buyer.email}`} className="text-sm text-rose underline">{s.buyer.email}</a>}
+                  <span className="ml-auto text-xs text-plum/50">{new Date(s.createdAt).toLocaleDateString()}</span>
+                </div>
+                {s.shipping && (
+                  <div className="mt-2 rounded-xl border border-bubblegum/50 bg-white/70 p-3 text-sm">
+                    <p className="whitespace-pre-line text-plum/80">{addr(s.shipping)}</p>
+                    <button
+                      onClick={() => navigator.clipboard?.writeText(addr(s.shipping))}
+                      className="mt-1 rounded-full border border-bubblegum px-3 py-0.5 text-xs font-semibold text-grape hover:bg-petal"
+                    >
+                      Copy address
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Built-in original paintings (from config, e.g. The Lost Duck) */}
+      {origs.length > 0 && (
+        <div className="mt-10">
+          <h2 className="font-display text-2xl text-grape">Built-in originals</h2>
+          <p className="mt-1 text-sm text-plum/60">Listed from config. When one sells, the buyer + address show here.</p>
           <div className="mt-4 space-y-4">
             {origs.map((o) => {
               const s = o.sale;
@@ -1986,66 +1789,28 @@ function AceoManager() {
                 <div key={o.id} className="card flex flex-wrap gap-4">
                   <div className="h-24 w-[68px] shrink-0 overflow-hidden rounded-xl border-2 border-petal">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={o.image}
-                      alt={o.title}
-                      className={`h-full w-full object-cover ${o.status === "sold" ? "grayscale" : ""}`}
-                    />
+                    <img src={o.image} alt={o.title} className={`h-full w-full object-cover ${o.status === "sold" ? "grayscale" : ""}`} />
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                       <span className="font-semibold text-grape">{o.title}</span>
                       <span className="text-sm text-rose">${s?.soldPrice ?? o.price}</span>
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-                          o.status === "sold" ? "bg-plum/15 text-plum/70" : "bg-grape/10 text-grape"
-                        }`}
-                      >
-                        {o.status === "sold" ? "sold" : "available"}
-                      </span>
+                      <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${o.status === "sold" ? "bg-plum/15 text-plum/70" : "bg-grape/10 text-grape"}`}>{o.status}</span>
                     </div>
                     {s && (s.buyer?.name || s.buyer?.email) && (
                       <p className="mt-0.5 text-sm text-plum/80">
                         {s.buyer?.name}
-                        {s.buyer?.email && (
-                          <>
-                            {" · "}
-                            <a href={`mailto:${s.buyer.email}`} className="text-rose underline">
-                              {s.buyer.email}
-                            </a>
-                          </>
-                        )}
+                        {s.buyer?.email && (<>{" · "}<a href={`mailto:${s.buyer.email}`} className="text-rose underline">{s.buyer.email}</a></>)}
                       </p>
                     )}
-                    {o.status === "sold" &&
-                      (s?.shipping ? (
-                        <div className="mt-2 rounded-xl border border-bubblegum/50 bg-white/70 p-3 text-sm">
-                          <p className="whitespace-pre-line text-plum/80">
-                            {`${s.shipping.name}\n${s.shipping.line1}${s.shipping.line2 ? ", " + s.shipping.line2 : ""}\n${s.shipping.city}, ${s.shipping.state} ${s.shipping.zip}\n${s.shipping.country}`}
-                          </p>
-                          <button
-                            onClick={() =>
-                              navigator.clipboard?.writeText(
-                                `${s.shipping.name}\n${s.shipping.line1}${s.shipping.line2 ? "\n" + s.shipping.line2 : ""}\n${s.shipping.city}, ${s.shipping.state} ${s.shipping.zip}\n${s.shipping.country}`
-                              )
-                            }
-                            className="mt-1 rounded-full border border-bubblegum px-3 py-0.5 text-xs font-semibold text-grape hover:bg-petal"
-                          >
-                            Copy address
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="mt-2 flex flex-wrap items-center gap-2">
-                          <span className="text-sm text-plum/60">No address saved for this sale.</span>
-                          <button
-                            disabled={busy}
-                            onClick={() => fetchOrigBuyer(o.id)}
-                            className="rounded-full bg-grape px-3 py-1 text-xs font-semibold text-white hover:bg-grape/85 disabled:opacity-50"
-                          >
-                            {busy ? "…" : "Fetch address from Stripe"}
-                          </button>
-                        </div>
-                      ))}
+                    {o.status === "sold" && (s?.shipping ? (
+                      <div className="mt-2 rounded-xl border border-bubblegum/50 bg-white/70 p-3 text-sm">
+                        <p className="whitespace-pre-line text-plum/80">{addr(s.shipping)}</p>
+                        <button onClick={() => navigator.clipboard?.writeText(addr(s.shipping))} className="mt-1 rounded-full border border-bubblegum px-3 py-0.5 text-xs font-semibold text-grape hover:bg-petal">Copy address</button>
+                      </div>
+                    ) : (
+                      <p className="mt-2 text-sm text-plum/60">Sold — check your email for the address (Stripe).</p>
+                    ))}
                   </div>
                 </div>
               );

@@ -3,15 +3,17 @@ import { randomUUID } from "crypto";
 import Stripe from "stripe";
 import { aceoPrice } from "@/lib/config";
 import { isAuthorized } from "@/lib/admin";
-import { listAceos, saveAceo, updateAceo, deleteAceo, getAceo } from "@/lib/store";
+import { listAceos, saveAceo, updateAceo, deleteAceo, getAceo, listStickerOrders } from "@/lib/store";
 import { orderFromSession } from "@/lib/stripeOrder";
 
-// List all ACEO listings (owner view).
+// List all shop items (owner view) + sticker orders to fulfill.
 export async function GET(req) {
   if (!isAuthorized(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  return NextResponse.json({ aceos: await listAceos() });
+  const [aceos, stickerOrders] = await Promise.all([listAceos(), listStickerOrders()]);
+  stickerOrders.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  return NextResponse.json({ aceos, stickerOrders });
 }
 
 // Create a new listing.
@@ -19,17 +21,20 @@ export async function POST(req) {
   if (!isAuthorized(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const { title, imageUrl, price } = await req.json();
+  const { title, imageUrl, price, type, details } = await req.json();
   if (!imageUrl || !String(imageUrl).startsWith("http")) {
     return NextResponse.json({ error: "Please upload an image first." }, { status: 400 });
   }
+  const kind = ["aceo", "sticker", "original"].includes(type) ? type : "aceo";
   const record = {
     id: randomUUID(),
     createdAt: new Date().toISOString(),
-    title: (title || "Untitled ACEO").trim().slice(0, 120),
+    type: kind,
+    title: (title || "Untitled").trim().slice(0, 120),
     imageUrl,
+    details: (details || "").trim().slice(0, 1000),
     price: Math.max(1, Math.round(Number(price) || aceoPrice)),
-    status: "available", // available | sold
+    status: "available", // available | sold  (stickers stay available)
   };
   await saveAceo(record);
   return NextResponse.json({ ok: true, aceo: record });

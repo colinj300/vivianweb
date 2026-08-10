@@ -35,11 +35,13 @@ export async function POST(req) {
     if (aceo.status !== "available") {
       return NextResponse.json({ error: "Sorry, that piece just sold!" }, { status: 409 });
     }
+    const kind = aceo.type || "aceo";
+    const label = kind === "sticker" ? "Sticker" : kind === "original" ? "Original" : "ACEO";
     item = {
-      name: `${site.brand} — ACEO: ${aceo.title}`,
+      name: `${site.brand} — ${label}: ${aceo.title}`,
       price: aceo.price,
       image: aceo.imageUrl,
-      metadata: { aceoId: aceo.id, kind: "aceo" },
+      metadata: { aceoId: aceo.id, kind },
     };
   }
 

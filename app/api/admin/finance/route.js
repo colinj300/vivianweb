@@ -1,23 +1,24 @@
 import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { isAuthorized } from "@/lib/admin";
-import { preorder } from "@/lib/config";
 import {
   listCommissions,
   listAceos,
-  listPreorders,
+  listStickerOrders,
+  listOriginalSales,
   listFinanceEntries,
   saveFinanceEntry,
   deleteFinanceEntry,
 } from "@/lib/store";
 
-// Build the full ledger: auto income from commissions + ACEO sales, plus
+// Build the full ledger: auto income from commissions + shop sales, plus
 // the manual entries Vivian adds herself.
 async function buildLedger() {
-  const [commissions, aceos, preorders, manual] = await Promise.all([
+  const [commissions, aceos, stickerOrders, originalSales, manual] = await Promise.all([
     listCommissions(),
     listAceos(),
-    listPreorders(),
+    listStickerOrders(),
+    listOriginalSales(),
     listFinanceEntries(),
   ]);
 
@@ -38,29 +39,43 @@ async function buildLedger() {
     });
   }
 
+  // Sold shop items (ACEOs + originals live in the same store, keyed by type).
   for (const a of aceos) {
     if (a.status !== "sold") continue;
+    const kind = a.type || "aceo";
     auto.push({
-      id: `aceo-${a.id}`,
+      id: `shopitem-${a.id}`,
       type: "income",
-      label: `ACEO — ${a.title || "untitled"}`,
-      amount: Number(a.price) || 0,
+      label: `${kind === "original" ? "Original" : "ACEO"} — ${a.title || "untitled"}`,
+      amount: Number(a.soldPrice ?? a.price) || 0,
       at: a.soldAt || a.createdAt,
-      source: "aceo",
+      source: kind === "original" ? "original" : "aceo",
       estimated: false,
     });
   }
 
-  // Pre-order income (only sheets that are still paid — refunded ones drop off).
-  for (const p of preorders) {
-    if (p.status !== "paid" && p.status !== "fulfilled") continue;
+  // Built-in original paintings (from config) that have sold.
+  for (const o of originalSales) {
     auto.push({
-      id: `preorder-${p.id}`,
+      id: `original-${o.id}`,
       type: "income",
-      label: `Pre-order — ${preorder.title}${p.quantity > 1 ? ` ×${p.quantity}` : ""} (${p.name || "buyer"})`,
-      amount: Number(p.amount) || 0,
-      at: p.createdAt,
-      source: "preorder",
+      label: `Original — ${o.title || "untitled"}`,
+      amount: Number(o.soldPrice) || 0,
+      at: o.soldAt,
+      source: "original",
+      estimated: false,
+    });
+  }
+
+  // Sticker orders (each purchase is its own income line).
+  for (const s of stickerOrders) {
+    auto.push({
+      id: `sticker-${s.id}`,
+      type: "income",
+      label: `Sticker — ${s.title || "untitled"}`,
+      amount: Number(s.amount) || 0,
+      at: s.createdAt,
+      source: "sticker",
       estimated: false,
     });
   }

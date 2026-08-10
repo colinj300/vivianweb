@@ -10,6 +10,8 @@ export async function GET() {
     imageUrl: a.imageUrl,
     price: a.price,
     status: a.status,
+    type: a.type || "aceo", // aceo | sticker | original
+    details: a.details || "",
   }));
   return NextResponse.json({ aceos });
 }
